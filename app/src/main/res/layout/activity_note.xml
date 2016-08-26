@@ -7,7 +7,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
-    tools:context="com.ak.jourknow.AddActivity"
+    tools:context=".NoteActivity"
     android:focusable="true"
     android:focusableInTouchMode="true"
     android:gravity="center_horizontal"
@@ -37,7 +37,6 @@
         android:textSize="20sp"
         />
 
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -46,39 +45,24 @@
         android:gravity="center_horizontal"
         android:orientation="horizontal"
         android:id="@+id/linearLayout">
-        <Button
-            android:id="@+id/iat_recognize"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:text="Start"
-        />
 
-        <Button
-            android:id="@+id/iat_stop"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-
-            android:text="Stop"
-        />
-
-        <Button
-            android:id="@+id/iat_language"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-
-            android:text="Language"
-        />
-
-        <Button
-            android:id="@+id/iat_analyze"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textAppearance="?android:attr/textAppearanceSmall"
-            android:text="Analyze"
+        <ImageButton
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_marginRight="50dp"
+            android:layout_marginEnd="50dp"
+            android:src="@mipmap/ic_mic_round"
+            android:id="@+id/speak"
+            android:background="@null"
             />
+        <ImageButton
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:src="@mipmap/ic_round"
+            android:id="@+id/analyze"
+            android:background="@null"
+            />
+
     </LinearLayout>
 
         <TextView
@@ -87,8 +71,8 @@
             android:id="@+id/analysis"
             android:textIsSelectable="true"
             android:layout_gravity="bottom"
-            android:linksClickable="true"
-            android:autoLink="all" />
+            />
     </LinearLayout>
     </ScrollView>
 </RelativeLayout>
+

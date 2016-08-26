@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     public void newSession(View view) {
-        Intent intent = new Intent(this, AddActivity.class);
+        Intent intent = new Intent(this, NoteActivity.class);
         startActivity(intent);
     }
 
@@ -134,16 +134,16 @@ public class MainActivity extends AppCompatActivity
 
         // The desired columns to be bound
         String[] columns = new String[]{
-                DbAdapter.KEY_SCRIPT,
-                DbAdapter.KEY_LENGTH,
                 DbAdapter.KEY_DATE,
+                DbAdapter.KEY_TEXT,
+                DbAdapter.KEY_WORDCNT
         };
 
         // the XML defined views which the data will be bound to
         int[] to = new int[]{
+                R.id.textViewDate,
                 R.id.textViewSnippet,
-                R.id.textViewLength,
-                R.id.textViewDate
+                R.id.textViewLength
         };
 
         // create the adapter using the cursor pointing to the desired data

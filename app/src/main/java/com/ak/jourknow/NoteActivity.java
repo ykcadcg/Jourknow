@@ -3,7 +3,6 @@ package com.ak.jourknow;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.os.Environment;
-import android.os.StrictMode;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
@@ -17,6 +16,7 @@ import android.widget.Toast;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 
 import com.iflytek.cloud.ErrorCode;
 import com.iflytek.cloud.InitListener;
@@ -34,50 +34,55 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 
-public class AddActivity extends AppCompatActivity implements View.OnClickListener {
-    private static String TAG = AddActivity.class.getSimpleName();
+public class NoteActivity extends AppCompatActivity implements View.OnClickListener {
+    private static String TAG = NoteActivity.class.getSimpleName();
 
     private SpeechRecognizer mIat;
     private RecognizerDialog mIatDialog;
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
-    private String mEngineType = SpeechConstant.TYPE_CLOUD;
     private Toast mToast;
-    private EditText mResultText;
+    private EditText mEditText;
     private final boolean mIsShowDialog = true;
-    private String mLanguage = "mandarin"; //en_us, mandarin
-    private final String mVadbos = "4000";
+    private String mLanguage = "en_us"; //en_us, mandarin
+    private String mEngineType = SpeechConstant.TYPE_CLOUD;
+    private final String mVadbos = "5000";
     private final String mVadeos = "30000";
     private final String mPunc = "1";
-    public class Result{
-        Calendar rightNow;
-        int lengthMin, lengthSec;
-        long startTime;
-        String script;
-        Analysis mAnalysis;
-        Result() {
-            mAnalysis = new Analysis();
+    private static Analyzer mAnalyzer = new Analyzer();
+    private DbAdapter mDbHelper = new DbAdapter(this);
+    public class NoteData{
+        Calendar time;
+        String text;
+        String analysis;
+        int wordCnt;
+        NoteData(){
+            time = Calendar.getInstance();
         }
     };
-    static Result mResult;
+
+    private NoteData mNoteData;
+
     boolean recordGranted = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_add);
+        setContentView(R.layout.activity_note);
 
+        SpeechUtility.createUtility(NoteActivity.this, "appid=" + getString(R.string.app_id));
 
-        SpeechUtility.createUtility(AddActivity.this, "appid=" + getString(R.string.app_id));
-
-        initLayout();
-        mIat = SpeechRecognizer.createRecognizer(AddActivity.this, mInitListener);
-        mIatDialog = new RecognizerDialog(AddActivity.this, mInitListener);
+        findViewById(R.id.speak).setOnClickListener(NoteActivity.this);
+        findViewById(R.id.analyze).setOnClickListener(NoteActivity.this);
+        mIat = SpeechRecognizer.createRecognizer(NoteActivity.this, mInitListener);
+        mIatDialog = new RecognizerDialog(NoteActivity.this, mInitListener);
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
-        mResultText = ((EditText) findViewById(R.id.iat_text));
+        mEditText = ((EditText) findViewById(R.id.iat_text));
+        mNoteData = new NoteData();
 
         requestRecordPermission();
-    }
 
+        loadSettings();
+    }
 
     public static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
 
@@ -86,24 +91,13 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
                 Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             recordGranted = false;
-
-            // Should we show an explanation?
             if (ActivityCompat.shouldShowRequestPermissionRationale(this,
                     Manifest.permission.RECORD_AUDIO)) {
-
-                Toast.makeText(AddActivity.this, "您拒绝了应用使用麦克风。为了正常使用，请允许应用使用麦克风。", Toast.LENGTH_SHORT).show();
-                // Show an expanation to the user *asynchronously* -- don't block
-                // this thread waiting for the user's response! After the user
-                // sees the explanation, try again to request the permission.
-
+                Toast.makeText(NoteActivity.this, "You have denied my Microphone access. To record, grant me Microphone access first.", Toast.LENGTH_SHORT).show();
             }
             //else
             {
-
-                // No explanation needed, we can request the permission.
-                ActivityCompat.requestPermissions(this,
-                        new String[]{Manifest.permission.RECORD_AUDIO},
-                        MY_PERMISSIONS_REQUEST_RECORD_AUDIO);
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.RECORD_AUDIO}, MY_PERMISSIONS_REQUEST_RECORD_AUDIO);
             }
         } else {
             recordGranted = true;
@@ -111,64 +105,38 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_RECORD_AUDIO: {
                 // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     recordGranted = true;
-                    // permission was granted, yay! Do the
-                    // contacts-related task you need to do.
-
                 } else {
                     recordGranted = false;
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
                 }
                 return;
             }
-
-            // other 'case' lines to check for other
-            // permissions this app might request
         }
     }
 
-    private void initLayout() {
-        findViewById(R.id.iat_recognize).setOnClickListener(AddActivity.this);
-        findViewById(R.id.iat_stop).setOnClickListener(AddActivity.this);
-        findViewById(R.id.iat_language).setOnClickListener(AddActivity.this);
-        findViewById(R.id.iat_analyze).setOnClickListener(AddActivity.this);
-    }
-
-    int ret = 0; // 函数调用返回值
-
     @Override
     public void onClick(View view) {
+        int ret = 0; // 函数调用返回值
         switch (view.getId()) {
             // 开始听写
             // 如何判断一次听写结束：OnResult isLast=true 或者 onError
-            case R.id.iat_recognize:
-                mResultText.setText(null);// 清空显示内容
-                mIatResults.clear();
-                // 设置参数
-                setParam();
-                boolean isShowDialog = mIsShowDialog;
-                boolean started = false;
-
+            case R.id.speak:
                 if (!recordGranted) {
                     requestRecordPermission();
                     return;
                 }
+                mIatResults.clear();
 
-                if (isShowDialog) {
+                if (mIsShowDialog) {
                     // 显示听写对话框
                     mIatDialog.setListener(mRecognizerDialogListener);
                     mIatDialog.show();
-                    showTip(getString(R.string.text_begin));
-                    started = true;
+
                 } else {
                     // 不显示听写对话框
                     ret = mIat.startListening(mRecognizerListener);
@@ -176,54 +144,42 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
                         showTip("听写失败,错误码：" + ret);
                     } else {
                         showTip(getString(R.string.text_begin));
-                        started = true;
                     }
                 }
-                if (started) {
-                    mResult = new Result();
-                    mResult.startTime = System.currentTimeMillis();
-                    mResult.rightNow = Calendar.getInstance();
-                }
                 break;
 
-            case R.id.iat_stop:
-                if(mIat.isListening())
-                {
-                    mIat.stopListening();
-                    showTip("停止听写");
-                    if (mResult != null){
-                        long millis = System.currentTimeMillis() - mResult.startTime;
-                        int seconds = (int) (millis / 1000);
-                        mResult.lengthMin = seconds / 60;
-                        mResult.lengthSec = seconds % 60;
-                        mResult.script = mResultText.getText().toString();
-                        DbAdapter dbHelper = new DbAdapter(this);
-                        dbHelper.open();
-                        dbHelper.addRecord(mResult);
-                    }
+            case R.id.analyze:
+                mIat.stopListening();
+
+                if (mEditText.getText().length() <= 0) {
+                    break;
                 }
-
-                break;
-
-            case R.id.iat_language:
-                //mIat.cancel();
-                mLanguage = (mLanguage == "mandarin" ? "en_us": "mandarin");
-                mIat.setParameter(SpeechConstant.LANGUAGE, mLanguage);
-                showTip("Language: "+ mLanguage);
-                break;
-
-            case R.id.iat_analyze:
-                if (mResult != null && mResultText.getText().length()> 0) {
-                    TextView analysisView = (TextView)findViewById(R.id.analysis);
-                    String script = mResultText.getText().toString();
-                    String analysis = mResult.mAnalysis.Analyze(script);
-                    analysisView.setText(analysis);
-                }
+                String analysis = mAnalyzer.Analyze(mEditText.getText().toString());
+                ((TextView)findViewById(R.id.analysis)).setText(analysis);
+                //updateRecord();
                 break;
 
             default:
                 break;
         }
+    }
+
+    @Override
+    public void onPause() {
+        mIat.stopListening();
+
+        updateRecord();
+        super.onPause();
+    }
+
+    private void updateRecord(){
+        if(mEditText.getText().length() <= 0)
+            return;
+        mNoteData.text = mEditText.getText().toString();
+        mNoteData.wordCnt = mEditText.getText().toString().split("\\s+").length;
+        mDbHelper.open();
+        mDbHelper.addRecord(mNoteData);
+        mDbHelper.close();
     }
 
     private InitListener mInitListener = new InitListener() {
@@ -271,8 +227,8 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
 
         @Override
         public void onVolumeChanged(int volume, byte[] data) {
-            showTip("当前正在说话，音量大小：" + volume);
-            Log.d(TAG, "返回音频数据："+data.length);
+            //showTip("当前正在说话，音量大小：" + volume);
+            //Log.d(TAG, "返回音频数据："+data.length);
         }
 
         @Override
@@ -288,7 +244,17 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
 
     private void printResult(RecognizerResult results) {
         String text = JsonParser.parseIatResult(results.getResultString());
-
+        if(text.length() <= 0) return;
+        if(!mLanguage.equalsIgnoreCase("mandarin")) {
+            //for non-Chinese: remove leading ','; skip single '.' case; uppercase first letter; add ending '. '.
+            if (text.charAt(0) == ',') {
+                text = text.substring(1);
+            }
+            text = text.trim();
+            if((text.length() <= 0) || text.equalsIgnoreCase("."))
+                return;
+            text = text.substring(0, 1).toUpperCase() + text.substring(1) + ". ";
+        }
         String sn = null;
         // 读取json结果中的sn字段
         try {
@@ -300,13 +266,15 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
 
         mIatResults.put(sn, text);
 
-        StringBuffer resultBuffer = new StringBuffer();
-        for (String key : mIatResults.keySet()) {
-            resultBuffer.append(mIatResults.get(key));
-        }
+        //yk why do this?
+//        StringBuffer resultBuffer = new StringBuffer();
+//        for (String key : mIatResults.keySet()) {
+//            resultBuffer.append(mIatResults.get(key));
+//        }
+//        mEditText.setText(resultBuffer.toString());
 
-        mResultText.setText(resultBuffer.toString());
-        mResultText.setSelection(mResultText.length());
+        mEditText.getText().insert(mEditText.getSelectionStart(), text);
+        mEditText.setSelection(mEditText.length());
     }
 
     //听写UI监听器
@@ -325,13 +293,9 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
         mToast.show();
     }
 
-    /**
-     * 参数设置
-     *
-     * @param param
-     * @return
-     */
-    public void setParam() {
+    public void loadSettings() {
+        mIatDialog.setUILanguage(new Locale("en", "US"));
+
         // 清空参数
         mIat.setParameter(SpeechConstant.PARAMS, null);
         // 设置听写引擎
@@ -353,8 +317,8 @@ public class AddActivity extends AppCompatActivity implements View.OnClickListen
         mIat.setParameter(SpeechConstant.ASR_PTT, mPunc);
         // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
         // 注：AUDIO_FORMAT参数语记需要更新版本才能生效
-        mIat.setParameter(SpeechConstant.AUDIO_FORMAT,"wav");
-        mIat.setParameter(SpeechConstant.ASR_AUDIO_PATH, Environment.getExternalStorageDirectory()+"/msc/iat.wav");
+        //mIat.setParameter(SpeechConstant.AUDIO_FORMAT,"wav");
+        //mIat.setParameter(SpeechConstant.ASR_AUDIO_PATH, Environment.getExternalStorageDirectory()+"/msc/iat.wav");
     }
 
     @Override

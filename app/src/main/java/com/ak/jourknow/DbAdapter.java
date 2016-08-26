@@ -18,10 +18,8 @@ public class DbAdapter {
     public static final String KEY_CALENDARMS   = "calendarMs";
     public static final String KEY_CALENDARSTR  = "calendarStr";
     public static final String KEY_DATE         = "date";
-    public static final String KEY_LENGTH       = "length";
-    public static final String KEY_LENGTHMIN    = "lengthMin";
-    public static final String KEY_LENGTHSEC    = "lengthSec";
-    public static final String KEY_SCRIPT       = "script";
+    public static final String KEY_WORDCNT       = "wordCnt";
+    public static final String KEY_TEXT       = "text";
 
     private static final String TAG = "DbAdapter";
     private DatabaseHelper mDbHelper;
@@ -39,10 +37,8 @@ public class DbAdapter {
                     KEY_CALENDARMS + "," +
                     KEY_CALENDARSTR + "," +
                     KEY_DATE + "," +
-                    KEY_LENGTH + "," +
-                    KEY_LENGTHMIN + "," +
-                    KEY_LENGTHSEC + "," +
-                    KEY_SCRIPT + "," +
+                    KEY_WORDCNT + "," +
+                    KEY_TEXT + "," +
                     " UNIQUE (" + KEY_CALENDARMS +"));";
 
     private static class DatabaseHelper extends SQLiteOpenHelper {
@@ -87,16 +83,14 @@ public class DbAdapter {
         super.finalize();
     }
 
-    public long addRecord(AddActivity.Result a) {
+    public long addRecord(NoteActivity.NoteData a) {
 
         ContentValues initialValues = new ContentValues();
-        initialValues.put(KEY_CALENDARMS   , a.rightNow.getTimeInMillis());
-        initialValues.put(KEY_CALENDARSTR  , a.rightNow.toString());
-        initialValues.put(KEY_DATE         , Integer.toString((a.rightNow.get(Calendar.MONTH) + 1)) + "/" + a.rightNow.get(Calendar.DAY_OF_MONTH));
-        initialValues.put(KEY_LENGTH       , a.lengthMin + ":" + a.lengthSec);
-        initialValues.put(KEY_LENGTHMIN    , a.lengthMin);
-        initialValues.put(KEY_LENGTHSEC    , a.lengthSec);
-        initialValues.put(KEY_SCRIPT       , a.script);
+        initialValues.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
+        initialValues.put(KEY_CALENDARSTR  , a.time.toString());
+        initialValues.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
+        initialValues.put(KEY_WORDCNT       , a.wordCnt);
+        initialValues.put(KEY_TEXT       , a.text);
 
         return mDb.insert(SQLITE_TABLE, null, initialValues);
     }
@@ -104,6 +98,18 @@ public class DbAdapter {
     public int delete(long _id) {
         return mDb.delete(SQLITE_TABLE, KEY_ROWID + "=" + _id, null);
     }
+
+    public boolean update(long _id, NoteActivity.NoteData a) {
+        ContentValues args = new ContentValues();
+        args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
+        args.put(KEY_CALENDARSTR  , a.time.toString());
+        args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
+        args.put(KEY_WORDCNT       , a.wordCnt);
+        args.put(KEY_TEXT       , a.text);
+
+        return mDb.update(SQLITE_TABLE, args, KEY_ROWID + "=" + _id, null) > 0;
+    }
+
 /*
     public boolean deleteAllRecords() {
 
@@ -117,7 +123,7 @@ public class DbAdapter {
 
 
     public Cursor fetchScript(long _id) throws SQLException {
-        Cursor cursor = mDb.query(true, SQLITE_TABLE, new String[] {KEY_SCRIPT},
+        Cursor cursor = mDb.query(true, SQLITE_TABLE, new String[] {KEY_TEXT},
                     KEY_ROWID + " = " + _id, null,
                     null, null, null, null);
         if (cursor != null) {
@@ -128,7 +134,7 @@ public class DbAdapter {
 
     public Cursor fetchRecordsList() {
         Cursor cursor = mDb.query(SQLITE_TABLE, new String[] {KEY_ROWID,
-                        KEY_SCRIPT, KEY_LENGTH, KEY_DATE},
+                        KEY_TEXT, KEY_WORDCNT, KEY_DATE},
                 null, null, null, null,  KEY_ROWID + " DESC", null);
 
         if (cursor != null) {

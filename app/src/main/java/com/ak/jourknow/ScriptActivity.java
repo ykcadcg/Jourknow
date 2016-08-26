@@ -34,10 +34,4 @@ public class ScriptActivity extends AppCompatActivity {
         }
     }
 
-    public void onClick(View arg0) {
-        Analysis analysis = new Analysis();
-        String result = analysis.Analyze(mScript);
-        TextView view = (TextView)findViewById(R.id.analysis);
-        view.setText(result);
-    }
 }
