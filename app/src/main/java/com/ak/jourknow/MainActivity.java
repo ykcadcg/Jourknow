@@ -168,7 +168,7 @@ public class MainActivity extends AppCompatActivity
                 // Get the cursor, positioned to the corresponding row in the result set
                 Cursor cursor = (Cursor) listView.getItemAtPosition(position);
 
-                Intent intent = new Intent(MainActivity.this, ScriptActivity.class);
+                Intent intent = new Intent(MainActivity.this, NoteActivity.class);
                 int rowId = cursor.getInt(cursor.getColumnIndex("_id"));
                 intent.putExtra(EXTRA_ID, rowId);
                 startActivity(intent);

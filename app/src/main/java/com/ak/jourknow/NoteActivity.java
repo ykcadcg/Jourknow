@@ -1,7 +1,9 @@
 package com.ak.jourknow;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -49,7 +51,9 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private final String mVadeos = "30000";
     private final String mPunc = "1";
     private static Analyzer mAnalyzer = new Analyzer();
-    private DbAdapter mDbHelper = new DbAdapter(this);
+    private DbAdapter mDbHelper;
+    private int mRowId;
+
     public class NoteData{
         Calendar time;
         String text;
@@ -59,7 +63,6 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             time = Calendar.getInstance();
         }
     };
-
     private NoteData mNoteData;
 
     boolean recordGranted = false;
@@ -69,19 +72,37 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note);
 
+        //speech
         SpeechUtility.createUtility(NoteActivity.this, "appid=" + getString(R.string.app_id));
-
-        findViewById(R.id.speak).setOnClickListener(NoteActivity.this);
-        findViewById(R.id.analyze).setOnClickListener(NoteActivity.this);
         mIat = SpeechRecognizer.createRecognizer(NoteActivity.this, mInitListener);
         mIatDialog = new RecognizerDialog(NoteActivity.this, mInitListener);
-        mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+
+        loadSettings();
+
+        //UI
+        findViewById(R.id.speak).setOnClickListener(NoteActivity.this);
+        findViewById(R.id.analyze).setOnClickListener(NoteActivity.this);
+        //mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         mEditText = ((EditText) findViewById(R.id.iat_text));
         mNoteData = new NoteData();
 
         requestRecordPermission();
 
-        loadSettings();
+        Intent intent = getIntent();
+        mRowId = intent.getIntExtra(MainActivity.EXTRA_ID, -1);
+        mDbHelper = new DbAdapter(this);
+
+        //entering an existing note
+        if(mRowId != -1){
+            mDbHelper.open();
+            Cursor cursor = mDbHelper.fetchScript(mRowId);
+            if(cursor != null) {
+                String text = cursor.getString(0);
+                mEditText.setText(text);
+                cursor.close();
+            }
+            mDbHelper.close();
+        }
     }
 
     public static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -141,15 +162,16 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                     // 不显示听写对话框
                     ret = mIat.startListening(mRecognizerListener);
                     if (ret != ErrorCode.SUCCESS) {
-                        showTip("听写失败,错误码：" + ret);
+                        showTip(getString(R.string.errorCode) + ret);
                     } else {
-                        showTip(getString(R.string.text_begin));
+                        showTip(getString(R.string.pleaseSpeak));
                     }
                 }
                 break;
 
             case R.id.analyze:
-                mIat.stopListening();
+                if(mIat.isListening())
+                    mIat.stopListening();
 
                 if (mEditText.getText().length() <= 0) {
                     break;
@@ -166,7 +188,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onPause() {
-        mIat.stopListening();
+        if(mIat.isListening())
+            mIat.stopListening();
 
         updateRecord();
         super.onPause();
@@ -178,7 +201,10 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mNoteData.text = mEditText.getText().toString();
         mNoteData.wordCnt = mEditText.getText().toString().split("\\s+").length;
         mDbHelper.open();
-        mDbHelper.addRecord(mNoteData);
+        if(mRowId == -1)
+            mDbHelper.addRecord(mNoteData);
+        else
+            mDbHelper.update(mRowId, mNoteData);
         mDbHelper.close();
     }
 
@@ -186,9 +212,9 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
         @Override
         public void onInit(int code) {
-            Log.d(TAG, "SpeechRecognizer init() code = " + code);
+            //Log.d(TAG, "SpeechRecognizer init() code = " + code);
             if (code != ErrorCode.SUCCESS) {
-                showTip("初始化失败，错误码：" + code);
+                showTip(getString(R.string.errorCode) + code);
             }
         }
     };
@@ -198,7 +224,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onBeginOfSpeech() {
             // 此回调表示：sdk内部录音机已经准备好了，用户可以开始语音输入
-            showTip("开始说话");
+            //showTip(getString(R.string.pleaseSpeak));
         }
 
         @Override
@@ -212,7 +238,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         @Override
         public void onEndOfSpeech() {
             // 此回调表示：检测到了语音的尾端点，已经进入识别过程，不再接受语音输入
-            showTip("结束说话");
+            //showTip("结束说话");
         }
 
         @Override
