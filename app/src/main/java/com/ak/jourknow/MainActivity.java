@@ -127,7 +127,7 @@ public class MainActivity extends AppCompatActivity
     private int displayListView() {
         dbHelper.open();
 
-        Cursor cursor = dbHelper.fetchRecordsList();
+        Cursor cursor = dbHelper.fetchNotesList();
         int rowCnt = 0;
         if(cursor != null)
             rowCnt = cursor.getCount();

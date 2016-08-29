@@ -10,8 +10,10 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Editable;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.util.Log;
 import android.view.View;
@@ -75,6 +77,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private int mRowId;
     private NoteData mNoteData;
     boolean recordGranted = false;
+    private boolean mTextChanged, mAnalyzed;
 
     //AI
     static ToneAnalyzer mToneAnalyzer = new ToneAnalyzer(ToneAnalyzer.VERSION_DATE_2016_05_19);
@@ -109,6 +112,9 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mEditText = ((EditText) findViewById(R.id.iat_text));
         mColoredText = ((TextView) findViewById(R.id.coloredText));
         mNoteData = new NoteData();
+        mTextChanged = false;
+        mEditText.addTextChangedListener(textWatcher);
+        mAnalyzed = false;
 
         requestRecordPermission();
 
@@ -117,6 +123,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mDbHelper = new DbAdapter(this);
 
         initChart();
+
         //entering an existing note
         if(mRowId != -1){
             loadNoteData(mRowId);
@@ -126,12 +133,19 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             startListen();
         }
     }
+    private TextWatcher textWatcher = new TextWatcher() {
+        public void afterTextChanged(Editable s) {
+            mTextChanged = true;
+        }
+        public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+        public void onTextChanged(CharSequence s, int start, int before, int count) {}
+    };
 
     void loadNoteData(int rowId){
         mDbHelper.open();
-        Cursor cursor = mDbHelper.queryById(mRowId);
+        //load note
+        Cursor cursor = mDbHelper.queryNoteById(mRowId);
         if(cursor != null) {
-            //load note
             mNoteData.text = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_TEXT));
             mNoteData.analysisRaw = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_ANALYSISRAW));
             mNoteData.wordCnt =  cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_WORDCNT));
@@ -144,6 +158,24 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             mEditText.setText(mNoteData.text);
 
             cursor.close();
+        }
+        //load sentences
+        mNoteData.sentences.clear();
+        Cursor c = mDbHelper.querySentencesByNoteId(mRowId);
+        if(c != null) {
+            if (c.moveToFirst()) {
+                do {
+                    sentenceEmotion sen = new sentenceEmotion(
+                            c.getInt(c.getColumnIndex(mDbHelper.KEY_SENTENCEID)),
+                            c.getInt(c.getColumnIndex(mDbHelper.KEY_TOPEMOTION)),
+                            c.getFloat(c.getColumnIndex(mDbHelper.KEY_SCORE)),
+                            c.getString(c.getColumnIndex(mDbHelper.KEY_TEXT)),
+                            c.getInt(c.getColumnIndex(mDbHelper.KEY_INPUTFROM)),
+                            c.getInt(c.getColumnIndex(mDbHelper.KEY_INPUTTO))
+                    );
+                    mNoteData.sentences.add(sen);
+                } while (c.moveToNext());
+            }
         }
         mDbHelper.close();
 
@@ -254,10 +286,13 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mNoteData.text = mEditText.getText().toString();
         mNoteData.wordCnt = mEditText.getText().toString().split("\\s+").length;
         mDbHelper.open();
-        if(mRowId == -1)
-            mDbHelper.insert(mNoteData);
-        else
-            mDbHelper.update(mRowId, mNoteData);
+        if(mRowId == -1) {
+            mDbHelper.insertNote(mNoteData);
+        }
+        else {
+            if (mTextChanged)
+                mDbHelper.updateNote(mRowId, mNoteData, mAnalyzed);
+        }
         mDbHelper.close();
     }
 
@@ -413,7 +448,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private final float sentenceEmotionThreshold = 0.5f;
     private final float strongEmotionThreshold = 0.75f;
     public class sentenceEmotion{
-        sentenceEmotion(int id, int topEmo, float s, String t, int from, int to){
+        sentenceEmotion(long id, int topEmo, float s, String t, int from, int to){
             sentenceId = id;
             topEmotion = topEmo;
             score = s;
@@ -421,7 +456,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             input_from = from;
             input_to = to;
         }
-        int sentenceId;
+        long sentenceId;
         int topEmotion; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
         float score;
         String text;
@@ -475,6 +510,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 Log.e("analysis: ", "Failed parsing emotion_tone");
                 return;
             }
+
+            mAnalyzed = true;
             List<ToneScore> toneScores = emotionTone.getTones();
             float maxScore = 0;
             int topEmo = -1;
@@ -495,7 +532,10 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
             //update emotional sentences
             List<SentenceTone> sentenceTones = tone.getSentencesTone();
+            mNoteData.sentences.clear();
             for(SentenceTone t : sentenceTones){
+                if(t.getTones().size() <= 0) //no emotion for this sentence - it happens
+                    continue;
                 ToneCategory c = t.getTones().get(0);
                 if(!c.getId().equalsIgnoreCase("emotion_tone")) {
                     Log.e("analysis: ", "Failed parsing emotion_tone for sentence " + t.getId());
