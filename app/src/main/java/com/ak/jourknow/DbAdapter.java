@@ -18,8 +18,15 @@ public class DbAdapter {
     public static final String KEY_CALENDARMS   = "calendarMs";
     public static final String KEY_CALENDARSTR  = "calendarStr";
     public static final String KEY_DATE         = "date";
-    public static final String KEY_WORDCNT       = "wordCnt";
-    public static final String KEY_TEXT       = "text";
+    public static final String KEY_WORDCNT      = "wordCnt";
+    public static final String KEY_TEXT         = "text";
+    public static final String KEY_ANALYSISRAW  = "analysisRaw";
+    public static final String KEY_JOY          = "joy";
+    public static final String KEY_ANGER        = "anger";
+    public static final String KEY_SADNESS      = "sadness";
+    public static final String KEY_DISGUST      = "disgust";
+    public static final String KEY_FEAR         = "fear";
+
 
     private static final String TAG = "DbAdapter";
     private DatabaseHelper mDbHelper;
@@ -39,7 +46,13 @@ public class DbAdapter {
                     KEY_DATE + "," +
                     KEY_WORDCNT + "," +
                     KEY_TEXT + "," +
-                    " UNIQUE (" + KEY_CALENDARMS +"));";
+                    KEY_ANALYSISRAW + "," +
+                    KEY_JOY + "," +
+                    KEY_ANGER + "," +
+                    KEY_SADNESS + "," +
+                    KEY_DISGUST + "," +
+                    KEY_FEAR + "," +
+    " UNIQUE (" + KEY_CALENDARMS +"));";
 
     private static class DatabaseHelper extends SQLiteOpenHelper {
 
@@ -83,16 +96,22 @@ public class DbAdapter {
         super.finalize();
     }
 
-    public long addRecord(NoteActivity.NoteData a) {
+    public long insert(NoteActivity.NoteData a) {
 
-        ContentValues initialValues = new ContentValues();
-        initialValues.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
-        initialValues.put(KEY_CALENDARSTR  , a.time.toString());
-        initialValues.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
-        initialValues.put(KEY_WORDCNT       , a.wordCnt);
-        initialValues.put(KEY_TEXT       , a.text);
+        ContentValues args = new ContentValues();
+        args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
+        args.put(KEY_CALENDARSTR  , a.time.toString());
+        args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
+        args.put(KEY_WORDCNT      , a.wordCnt);
+        args.put(KEY_TEXT         , a.text);
+        args.put(KEY_ANALYSISRAW  , a.analysisRaw);
+        args.put(KEY_JOY          , a.jasdf[0]);
+        args.put(KEY_ANGER        , a.jasdf[1]);
+        args.put(KEY_SADNESS      , a.jasdf[2]);
+        args.put(KEY_DISGUST      , a.jasdf[3]);
+        args.put(KEY_FEAR         , a.jasdf[4]);
 
-        return mDb.insert(SQLITE_TABLE, null, initialValues);
+        return mDb.insert(SQLITE_TABLE, null, args);
     }
 
     public int delete(long _id) {
@@ -106,6 +125,12 @@ public class DbAdapter {
         args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
         args.put(KEY_WORDCNT       , a.wordCnt);
         args.put(KEY_TEXT       , a.text);
+        args.put(KEY_ANALYSISRAW  , a.analysisRaw);
+        args.put(KEY_JOY          , a.jasdf[0]);
+        args.put(KEY_ANGER        , a.jasdf[1]);
+        args.put(KEY_SADNESS      , a.jasdf[2]);
+        args.put(KEY_DISGUST      , a.jasdf[3]);
+        args.put(KEY_FEAR         , a.jasdf[4]);
 
         return mDb.update(SQLITE_TABLE, args, KEY_ROWID + "=" + _id, null) > 0;
     }
@@ -122,8 +147,8 @@ public class DbAdapter {
     */
 
 
-    public Cursor fetchScript(long _id) throws SQLException {
-        Cursor cursor = mDb.query(true, SQLITE_TABLE, new String[] {KEY_TEXT},
+    public Cursor queryById(long _id) throws SQLException {
+        Cursor cursor = mDb.query(true, SQLITE_TABLE, null,
                     KEY_ROWID + " = " + _id, null,
                     null, null, null, null);
         if (cursor != null) {

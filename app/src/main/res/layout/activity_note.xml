@@ -14,7 +14,6 @@
     android:orientation="vertical"
     >
 
-
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -28,51 +27,58 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             >
-    <EditText
-        android:id="@+id/iat_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="top|left"
-        android:paddingBottom="20dp"
-        android:textSize="20sp"
-        />
+            <EditText
+                android:id="@+id/iat_text"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="top|left"
+                android:paddingBottom="20dp"
+                />
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="2dp"
-        android:layout_marginTop="10dp"
-        android:gravity="center_horizontal"
-        android:orientation="horizontal"
-        android:id="@+id/linearLayout">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="2dp"
+                android:layout_marginTop="10dp"
+                android:gravity="center_horizontal"
+                android:orientation="horizontal"
+                android:id="@+id/linearLayout">
 
-        <ImageButton
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:layout_marginRight="50dp"
-            android:layout_marginEnd="50dp"
-            android:src="@mipmap/ic_mic_round"
-            android:id="@+id/speak"
-            android:background="@null"
-            />
-        <ImageButton
-            android:layout_width="50dp"
-            android:layout_height="50dp"
-            android:src="@mipmap/ic_round"
-            android:id="@+id/analyze"
-            android:background="@null"
-            />
+                <ImageButton
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_marginRight="50dp"
+                    android:layout_marginEnd="50dp"
+                    android:src="@mipmap/ic_mic_round"
+                    android:id="@+id/speak"
+                    android:background="@null"
+                    />
+                <ImageButton
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:src="@mipmap/ic_round"
+                    android:id="@+id/analyze"
+                    android:background="@null"
+                    />
+            </LinearLayout>
 
-    </LinearLayout>
+            <com.github.mikephil.charting.charts.BubbleChart
+                android:id="@+id/chart"
+                android:layout_width="match_parent"
+                android:layout_height="100dp"
+                android:layout_marginTop="20dp"
+                android:layout_marginBottom="20dp"
+                android:layout_gravity="center_horizontal"
+                />
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:id="@+id/analysis"
-            android:textIsSelectable="true"
-            android:layout_gravity="bottom"
-            />
-    </LinearLayout>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/analysis"
+                android:textIsSelectable="true"
+                android:layout_gravity="bottom"
+                />
+        </LinearLayout>
     </ScrollView>
 </RelativeLayout>
 

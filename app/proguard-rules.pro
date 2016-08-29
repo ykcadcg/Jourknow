@@ -16,3 +16,4 @@
 #   public *;
 #}
 -keep class com.iflytek.**{*;}
+-keep class com.github.mikephil.charting.** { *; }

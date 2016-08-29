@@ -29,4 +29,5 @@ dependencies {
     compile 'com.android.support:design:23.4.0'
     compile files('libs/Msc.jar')
     compile 'com.ibm.watson.developer_cloud:java-sdk:3.3.0'
+    compile 'com.github.PhilJay:MPAndroidChart:v3.0.0-beta1'
 }

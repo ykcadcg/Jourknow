@@ -15,11 +15,26 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.lang.reflect.Array;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 
+import com.github.mikephil.charting.charts.BubbleChart;
+import com.github.mikephil.charting.data.BubbleData;
+import com.github.mikephil.charting.data.BubbleDataSet;
+import com.github.mikephil.charting.data.BubbleEntry;
+import com.github.mikephil.charting.interfaces.datasets.IBubbleDataSet;
+import com.github.mikephil.charting.utils.ColorTemplate;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.ToneAnalyzer;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.Tone;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneAnalysis;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneCategory;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneOptions;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneScore;
 import com.iflytek.cloud.ErrorCode;
 import com.iflytek.cloud.InitListener;
 import com.iflytek.cloud.RecognizerListener;
@@ -50,22 +65,23 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private final String mVadbos = "5000";
     private final String mVadeos = "30000";
     private final String mPunc = "1";
-    private static Analyzer mAnalyzer = new Analyzer();
     private DbAdapter mDbHelper;
     private int mRowId;
-
-    public class NoteData{
-        Calendar time;
-        String text;
-        String analysis;
-        int wordCnt;
-        NoteData(){
-            time = Calendar.getInstance();
-        }
-    };
     private NoteData mNoteData;
-
     boolean recordGranted = false;
+
+    //AI
+    static ToneAnalyzer mToneAnalyzer = new ToneAnalyzer(ToneAnalyzer.VERSION_DATE_2016_05_19);
+
+    //UI
+    public final int[] jasdfColors = new int[]{
+            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#FFD629"), 130), //joy //FFFF00
+            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#E80521"), 130), //anger //FF0000
+            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#086DB2"), 130), //sadness //0000FF
+            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#592684"), 130), //disgust: purple //800080
+            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#325E2B"), 130)}; //fear //00FF00
+
+    private BubbleChart mChart;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,17 +108,38 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mRowId = intent.getIntExtra(MainActivity.EXTRA_ID, -1);
         mDbHelper = new DbAdapter(this);
 
+        initChart();
         //entering an existing note
         if(mRowId != -1){
-            mDbHelper.open();
-            Cursor cursor = mDbHelper.fetchScript(mRowId);
-            if(cursor != null) {
-                String text = cursor.getString(0);
-                mEditText.setText(text);
-                cursor.close();
-            }
-            mDbHelper.close();
+            loadNote(mRowId);
+            mChart.setEnabled(false);
         }
+        else {
+            startListen();
+        }
+    }
+
+    void loadNote(int rowId){
+        mDbHelper.open();
+        Cursor cursor = mDbHelper.queryById(mRowId);
+        if(cursor != null) {
+            //load note
+            mNoteData.text = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_TEXT));
+            mNoteData.analysisRaw = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_ANALYSISRAW));
+            mNoteData.wordCnt =  cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_WORDCNT));
+            mNoteData.jasdf[0] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_JOY));
+            mNoteData.jasdf[1] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_ANGER));
+            mNoteData.jasdf[2] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_SADNESS));
+            mNoteData.jasdf[3] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_DISGUST));
+            mNoteData.jasdf[4] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_FEAR));
+
+            mEditText.setText(mNoteData.text);
+
+            cursor.close();
+        }
+        mDbHelper.close();
+
+        updateChart();
     }
 
     public static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -142,31 +179,11 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
     @Override
     public void onClick(View view) {
-        int ret = 0; // 函数调用返回值
         switch (view.getId()) {
             // 开始听写
             // 如何判断一次听写结束：OnResult isLast=true 或者 onError
             case R.id.speak:
-                if (!recordGranted) {
-                    requestRecordPermission();
-                    return;
-                }
-                mIatResults.clear();
-
-                if (mIsShowDialog) {
-                    // 显示听写对话框
-                    mIatDialog.setListener(mRecognizerDialogListener);
-                    mIatDialog.show();
-
-                } else {
-                    // 不显示听写对话框
-                    ret = mIat.startListening(mRecognizerListener);
-                    if (ret != ErrorCode.SUCCESS) {
-                        showTip(getString(R.string.errorCode) + ret);
-                    } else {
-                        showTip(getString(R.string.pleaseSpeak));
-                    }
-                }
+                startListen();
                 break;
 
             case R.id.analyze:
@@ -176,13 +193,41 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 if (mEditText.getText().length() <= 0) {
                     break;
                 }
-                String analysis = mAnalyzer.Analyze(mEditText.getText().toString());
-                ((TextView)findViewById(R.id.analysis)).setText(analysis);
-                //updateRecord();
+
+                mNoteData.Analyze(mEditText.getText().toString());
+                updateChart();
+                //((TextView)findViewById(R.id.analysis)).setText(analysis);
+
                 break;
 
             default:
                 break;
+        }
+    }
+
+    void startListen(){
+        int ret = 0; // 函数调用返回值
+
+        if (!recordGranted) {
+            requestRecordPermission();
+            return;
+        }
+
+        mIatResults.clear();
+
+        if (mIsShowDialog) {
+            // 显示听写对话框
+            mIatDialog.setListener(mRecognizerDialogListener);
+            mIatDialog.show();
+
+        } else {
+            // 不显示听写对话框
+            ret = mIat.startListening(mRecognizerListener);
+            if (ret != ErrorCode.SUCCESS) {
+                showTip(getString(R.string.errorCode) + ret);
+            } else {
+                showTip(getString(R.string.pleaseSpeak));
+            }
         }
     }
 
@@ -202,7 +247,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mNoteData.wordCnt = mEditText.getText().toString().split("\\s+").length;
         mDbHelper.open();
         if(mRowId == -1)
-            mDbHelper.addRecord(mNoteData);
+            mDbHelper.insert(mNoteData);
         else
             mDbHelper.update(mRowId, mNoteData);
         mDbHelper.close();
@@ -320,6 +365,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     public void loadSettings() {
+        mToneAnalyzer.setUsernameAndPassword("1ddb6e92-d10f-4164-9e67-c13b669224ef", "fy0LwRZMMipp");
+
         mIatDialog.setUILanguage(new Locale("en", "US"));
 
         // 清空参数
@@ -355,4 +402,105 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mIat.destroy();
     }
 
+    private final float noteEmotionThreshold = 0.5f;
+
+    public class NoteData{
+        Calendar time;
+        String text;
+        String analysisRaw;
+        int wordCnt;
+        float[] jasdf = {0,0,0,0,0}; //scores: joy, anger, sadness, disgust, fear   //{.9f, .8f, .7f, .6f, .5f};//
+
+        NoteData(){
+            time = Calendar.getInstance();
+        }
+
+        void Analyze(String text){
+            analysisRaw = text;
+
+            ToneOptions options = new ToneOptions.Builder().addTone(Tone.EMOTION).build();
+            ToneAnalysis tone = mToneAnalyzer.getTone(text, options).execute();
+            Log.v("analysis: ", tone.toString());
+            ToneCategory emotionTone = tone.getDocumentTone().getTones().get(0);
+            if(!emotionTone.getId().equalsIgnoreCase("emotion_tone")) {
+                Log.e("analysis: ", "Failed parsing emotion_tone");
+                return;
+            }
+            List<ToneScore> toneScores = emotionTone.getTones();
+            for (ToneScore s : toneScores) {
+                float f = s.getScore().floatValue();
+                switch (s.getId()) {
+                    case "joy":
+                        mNoteData.jasdf[0] = f;
+                        break;
+                    case "anger":
+                        mNoteData.jasdf[1] = f;
+                        break;
+                    case "sadness":
+                        mNoteData.jasdf[2] = f;
+                        break;
+                    case "disgust":
+                        mNoteData.jasdf[3] = f;
+                        break;
+                    case "fear":
+                        mNoteData.jasdf[4] = f;
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    };
+
+    private void initChart(){
+        //init
+        mChart = (BubbleChart) findViewById(R.id.chart);
+        //mChart.setDescription("");
+        mChart.setDrawGridBackground(false);
+        mChart.setTouchEnabled(true);
+        mChart.setDragEnabled(true);
+        mChart.setScaleEnabled(true);
+        mChart.setMaxVisibleValueCount(5);
+        mChart.setPinchZoom(true);
+        mChart.getXAxis().setEnabled(false);
+        mChart.getAxisLeft().setEnabled(false);
+        mChart.getAxisRight().setEnabled(false);
+        mChart.setDescription("");
+        //setBorderColor
+        mChart.getXAxis().setAxisMinValue(-0.5f);
+        mChart.getXAxis().setAxisMaxValue(5.5f);
+    }
+
+    private void updateChart(){
+        ArrayList<IBubbleDataSet> dataSets = new ArrayList<>();
+        ArrayList<BubbleEntry> vals = new ArrayList<>();
+        int[] colors = new int[5];
+        for(int i = 0, pos = 0; i < 5; ++i) {
+//            if(mNoteData.jasdf[i] < noteEmotionThreshold)
+//                continue;
+            BubbleEntry entry = new BubbleEntry(pos, 0, mNoteData.jasdf[i]); //x, y, size
+            vals.add(entry);
+            colors[pos] = jasdfColors[i];
+            ++pos;
+        }
+        //        if(dataSets.size() == 0){ //no emotion detected
+        //            mChart.setVisibility(0);
+        //            return;
+        //        }
+        mChart.setEnabled(true);
+        BubbleDataSet set = new BubbleDataSet(vals, "");
+
+        set.setColors(colors, 255);
+        set.setDrawValues(false);
+        dataSets.add(set);
+
+        BubbleData data = new BubbleData(dataSets);
+        data.setDrawValues(false);
+        data.setHighlightCircleWidth(1.5f);
+
+        mChart.setData(data);
+        //mChart.setBackground()
+        //mChart.animateX(200);
+        mChart.invalidate();
+    }
 }
