@@ -4,11 +4,15 @@ import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.style.BackgroundColorSpan;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -30,6 +34,7 @@ import com.github.mikephil.charting.data.BubbleEntry;
 import com.github.mikephil.charting.interfaces.datasets.IBubbleDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 import com.ibm.watson.developer_cloud.tone_analyzer.v3.ToneAnalyzer;
+import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.SentenceTone;
 import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.Tone;
 import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneAnalysis;
 import com.ibm.watson.developer_cloud.tone_analyzer.v3.model.ToneCategory;
@@ -59,6 +64,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
     private Toast mToast;
     private EditText mEditText;
+    private TextView mColoredText;
     private final boolean mIsShowDialog = true;
     private String mLanguage = "en_us"; //en_us, mandarin
     private String mEngineType = SpeechConstant.TYPE_CLOUD;
@@ -74,12 +80,13 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     static ToneAnalyzer mToneAnalyzer = new ToneAnalyzer(ToneAnalyzer.VERSION_DATE_2016_05_19);
 
     //UI
-    public final int[] jasdfColors = new int[]{
-            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#FFD629"), 130), //joy //FFFF00
-            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#E80521"), 130), //anger //FF0000
-            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#086DB2"), 130), //sadness //0000FF
-            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#592684"), 130), //disgust: purple //800080
-            ColorTemplate.getColorWithAlphaComponent(ColorTemplate.rgb("#325E2B"), 130)}; //fear //00FF00
+    public final String[] jasdfColors = new String[]{ //strong/ median for each emotion
+            "#FFD629", "#FFF173",//joy
+            "#E80521", "#FFA197",//anger
+            "#086DB2", "#69C3E2",//sadness
+            "#592684", "#A779D8", //disgust
+            "#325E2B", "#7DB258"//fear
+    };
 
     private BubbleChart mChart;
 
@@ -100,6 +107,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.analyze).setOnClickListener(NoteActivity.this);
         //mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         mEditText = ((EditText) findViewById(R.id.iat_text));
+        mColoredText = ((TextView) findViewById(R.id.coloredText));
         mNoteData = new NoteData();
 
         requestRecordPermission();
@@ -111,7 +119,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         initChart();
         //entering an existing note
         if(mRowId != -1){
-            loadNote(mRowId);
+            loadNoteData(mRowId);
             mChart.setEnabled(false);
         }
         else {
@@ -119,7 +127,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
-    void loadNote(int rowId){
+    void loadNoteData(int rowId){
         mDbHelper.open();
         Cursor cursor = mDbHelper.queryById(mRowId);
         if(cursor != null) {
@@ -132,7 +140,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             mNoteData.jasdf[2] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_SADNESS));
             mNoteData.jasdf[3] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_DISGUST));
             mNoteData.jasdf[4] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_FEAR));
-
+            mNoteData.topEmotion = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_TOPEMOTION));
             mEditText.setText(mNoteData.text);
 
             cursor.close();
@@ -140,6 +148,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mDbHelper.close();
 
         updateChart();
+        updateColoredText();
     }
 
     public static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -196,8 +205,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
                 mNoteData.Analyze(mEditText.getText().toString());
                 updateChart();
-                //((TextView)findViewById(R.id.analysis)).setText(analysis);
-
+                updateColoredText();
                 break;
 
             default:
@@ -402,7 +410,41 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mIat.destroy();
     }
 
-    private final float noteEmotionThreshold = 0.5f;
+    private final float sentenceEmotionThreshold = 0.5f;
+    private final float strongEmotionThreshold = 0.75f;
+    public class sentenceEmotion{
+        sentenceEmotion(int id, int topEmo, float s, String t, int from, int to){
+            sentenceId = id;
+            topEmotion = topEmo;
+            score = s;
+            text = t;
+            input_from = from;
+            input_to = to;
+        }
+        int sentenceId;
+        int topEmotion; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
+        float score;
+        String text;
+        int input_from;
+        int input_to;
+    }
+
+    public int emotionIdx(String emotion){
+        switch (emotion) {
+            case "joy":
+                return 0;
+            case "anger":
+                return 1;
+            case "sadness":
+                return 2;
+            case "disgust":
+                return 3;
+            case "fear":
+                return 4;
+            default:
+                return -1;
+        }
+    }
 
     public class NoteData{
         Calendar time;
@@ -410,44 +452,73 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         String analysisRaw;
         int wordCnt;
         float[] jasdf = {0,0,0,0,0}; //scores: joy, anger, sadness, disgust, fear   //{.9f, .8f, .7f, .6f, .5f};//
+        int topEmotion; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
+        ArrayList<sentenceEmotion> sentences;
 
         NoteData(){
             time = Calendar.getInstance();
+            sentences = new ArrayList<>();
         }
 
         void Analyze(String text){
-            analysisRaw = text;
+            if(text.length() <= 0)
+                return;
+            mNoteData.text = text;
 
             ToneOptions options = new ToneOptions.Builder().addTone(Tone.EMOTION).build();
             ToneAnalysis tone = mToneAnalyzer.getTone(text, options).execute();
             Log.v("analysis: ", tone.toString());
+            analysisRaw = tone.toString();
+
             ToneCategory emotionTone = tone.getDocumentTone().getTones().get(0);
             if(!emotionTone.getId().equalsIgnoreCase("emotion_tone")) {
                 Log.e("analysis: ", "Failed parsing emotion_tone");
                 return;
             }
             List<ToneScore> toneScores = emotionTone.getTones();
+            float maxScore = 0;
+            int topEmo = -1;
             for (ToneScore s : toneScores) {
-                float f = s.getScore().floatValue();
-                switch (s.getId()) {
-                    case "joy":
-                        mNoteData.jasdf[0] = f;
-                        break;
-                    case "anger":
-                        mNoteData.jasdf[1] = f;
-                        break;
-                    case "sadness":
-                        mNoteData.jasdf[2] = f;
-                        break;
-                    case "disgust":
-                        mNoteData.jasdf[3] = f;
-                        break;
-                    case "fear":
-                        mNoteData.jasdf[4] = f;
-                        break;
-                    default:
-                        break;
+                float score = s.getScore().floatValue();
+                int idx = emotionIdx(s.getId());
+                if(idx != -1){
+                    mNoteData.jasdf[idx] = score;
+                    if(score > maxScore){
+                        maxScore = score;
+                        topEmo = idx * 2;
+                        if(maxScore < strongEmotionThreshold)
+                            topEmo += 1; //moderate emotion
+                    }
                 }
+            }
+            mNoteData.topEmotion = topEmo;
+
+            //update emotional sentences
+            List<SentenceTone> sentenceTones = tone.getSentencesTone();
+            for(SentenceTone t : sentenceTones){
+                ToneCategory c = t.getTones().get(0);
+                if(!c.getId().equalsIgnoreCase("emotion_tone")) {
+                    Log.e("analysis: ", "Failed parsing emotion_tone for sentence " + t.getId());
+                    continue;
+                }
+                List<ToneScore> scores = c.getTones();
+                //find max score that's >threshold
+                float maxScoreS = 0;
+                int topEmoS = -1;
+                for(ToneScore s: scores){
+                    float score = s.getScore().floatValue();
+                    int idx = emotionIdx(s.getId());
+                    if(idx != -1) {
+                        if (score > maxScoreS) {
+                            maxScoreS = score;
+                            topEmoS = idx * 2;
+                            if(maxScoreS < strongEmotionThreshold)
+                                topEmoS += 1; //moderate emotion
+                        }
+                    }
+                }
+                //if(maxScoreS > sentenceEmotionThreshold)
+                mNoteData.sentences.add(new sentenceEmotion(t.getId(), topEmoS, maxScoreS, t.getText(), t.getInputFrom(), t.getInputTo()));
             }
         }
     };
@@ -469,9 +540,13 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         //setBorderColor
         mChart.getXAxis().setAxisMinValue(-0.5f);
         mChart.getXAxis().setAxisMaxValue(5.5f);
+        mChart.setDrawBorders(true);
+        mChart.setBorderColor(getResources().getColor(R.color.colorPrimary));
     }
 
     private void updateChart(){
+        if(mEditText.getText().length() <= 0)
+            return;
         ArrayList<IBubbleDataSet> dataSets = new ArrayList<>();
         ArrayList<BubbleEntry> vals = new ArrayList<>();
         int[] colors = new int[5];
@@ -480,7 +555,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 //                continue;
             BubbleEntry entry = new BubbleEntry(pos, 0, mNoteData.jasdf[i]); //x, y, size
             vals.add(entry);
-            colors[pos] = jasdfColors[i];
+            colors[pos] = Color.parseColor(jasdfColors[i * 2]);
             ++pos;
         }
         //        if(dataSets.size() == 0){ //no emotion detected
@@ -490,7 +565,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mChart.setEnabled(true);
         BubbleDataSet set = new BubbleDataSet(vals, "");
 
-        set.setColors(colors, 255);
+        set.setColors(colors);
         set.setDrawValues(false);
         dataSets.add(set);
 
@@ -499,8 +574,30 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         data.setHighlightCircleWidth(1.5f);
 
         mChart.setData(data);
+
         //mChart.setBackground()
         //mChart.animateX(200);
         mChart.invalidate();
+    }
+
+    private void updateColoredText(){
+        if((mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
+            return;
+        //spannable: see http://blog.csdn.net/harvic880925/article/details/38984705
+        SpannableString spanText = new SpannableString(mNoteData.text);
+        BackgroundColorSpan[] spans = new BackgroundColorSpan[10];
+        for (int i = 0; i < 10; ++i)
+        {
+            spans[i] = new BackgroundColorSpan(Color.parseColor(jasdfColors[i]));
+        }
+
+        for(sentenceEmotion sen : mNoteData.sentences){
+            if(sen.score > sentenceEmotionThreshold){
+                int spanIdx = sen.topEmotion;
+                if(spanIdx >= 0 && spanIdx < spans.length)
+                    spanText.setSpan(spans[spanIdx], sen.input_from, sen.input_to, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        mColoredText.setText(spanText);
     }
 }

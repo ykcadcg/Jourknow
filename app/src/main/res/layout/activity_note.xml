@@ -74,7 +74,8 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:id="@+id/analysis"
+                android:id="@+id/coloredText"
+                android:bufferType="spannable"
                 android:textIsSelectable="true"
                 android:layout_gravity="bottom"
                 />

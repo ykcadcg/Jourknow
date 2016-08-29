@@ -26,6 +26,7 @@ public class DbAdapter {
     public static final String KEY_SADNESS      = "sadness";
     public static final String KEY_DISGUST      = "disgust";
     public static final String KEY_FEAR         = "fear";
+    public static final String KEY_TOPEMOTION   = "topEmotion";
 
 
     private static final String TAG = "DbAdapter";
@@ -52,6 +53,7 @@ public class DbAdapter {
                     KEY_SADNESS + "," +
                     KEY_DISGUST + "," +
                     KEY_FEAR + "," +
+                    KEY_TOPEMOTION + "," +
     " UNIQUE (" + KEY_CALENDARMS +"));";
 
     private static class DatabaseHelper extends SQLiteOpenHelper {
@@ -110,7 +112,7 @@ public class DbAdapter {
         args.put(KEY_SADNESS      , a.jasdf[2]);
         args.put(KEY_DISGUST      , a.jasdf[3]);
         args.put(KEY_FEAR         , a.jasdf[4]);
-
+        args.put(KEY_TOPEMOTION   , a.topEmotion);
         return mDb.insert(SQLITE_TABLE, null, args);
     }
 
@@ -131,6 +133,7 @@ public class DbAdapter {
         args.put(KEY_SADNESS      , a.jasdf[2]);
         args.put(KEY_DISGUST      , a.jasdf[3]);
         args.put(KEY_FEAR         , a.jasdf[4]);
+        args.put(KEY_TOPEMOTION   , a.topEmotion);
 
         return mDb.update(SQLITE_TABLE, args, KEY_ROWID + "=" + _id, null) > 0;
     }
@@ -159,7 +162,7 @@ public class DbAdapter {
 
     public Cursor fetchRecordsList() {
         Cursor cursor = mDb.query(SQLITE_TABLE, new String[] {KEY_ROWID,
-                        KEY_TEXT, KEY_WORDCNT, KEY_DATE},
+                        KEY_TEXT, KEY_WORDCNT, KEY_DATE, KEY_TOPEMOTION},
                 null, null, null, null,  KEY_ROWID + " DESC", null);
 
         if (cursor != null) {
