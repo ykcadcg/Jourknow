@@ -28,6 +28,7 @@ public class DbAdapter {
     public static final String KEY_DISGUST      = "disgust";
     public static final String KEY_FEAR         = "fear";
     public static final String KEY_TOPEMOTION   = "topEmotion";
+    public static final String KEY_ANALYZED     = "analyzed";
 
     //Sentences table
     public static final String KEY_NOTEID   = "noteId";
@@ -56,6 +57,7 @@ public class DbAdapter {
                     KEY_DATE + "," +
                     KEY_WORDCNT + "," +
                     KEY_TEXT + "," +
+                    KEY_ANALYZED + "," +
                     KEY_ANALYSISRAW + "," +
                     KEY_JOY + "," +
                     KEY_ANGER + "," +
@@ -139,17 +141,22 @@ public class DbAdapter {
         args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
         args.put(KEY_WORDCNT      , a.wordCnt);
         args.put(KEY_TEXT         , a.text);
-        args.put(KEY_ANALYSISRAW  , a.analysisRaw);
-        args.put(KEY_JOY          , a.jasdf[0]);
-        args.put(KEY_ANGER        , a.jasdf[1]);
-        args.put(KEY_SADNESS      , a.jasdf[2]);
-        args.put(KEY_DISGUST      , a.jasdf[3]);
-        args.put(KEY_FEAR         , a.jasdf[4]);
-        args.put(KEY_TOPEMOTION   , a.topEmotion);
+        args.put(KEY_ANALYZED     , a.analyzed);
+        if(a.analyzed) {
+            args.put(KEY_ANALYSISRAW, a.analysisRaw);
+            args.put(KEY_JOY, a.jasdf[0]);
+            args.put(KEY_ANGER, a.jasdf[1]);
+            args.put(KEY_SADNESS, a.jasdf[2]);
+            args.put(KEY_DISGUST, a.jasdf[3]);
+            args.put(KEY_FEAR, a.jasdf[4]);
+            args.put(KEY_TOPEMOTION, a.topEmotion);
+        }
         long noteId = mDb.insert(TABLE_NOTES, null, args);
 
-        for (NoteActivity.sentenceEmotion s : a.sentences) {
-            insertSentence(noteId, s);
+        if(a.sentences != null) {
+            for (NoteActivity.sentenceEmotion s : a.sentences) {
+                insertSentence(noteId, s);
+            }
         }
         return noteId;
     }
@@ -177,30 +184,30 @@ public class DbAdapter {
         return mDb.delete(TABLE_NOTES, KEY_ROWID + "=" + _id, null);
     }
 
-    public boolean updateNote(long _id, NoteActivity.NoteData a, boolean bAnalyzed) {
+    public boolean updateNote(long _id, NoteActivity.NoteData a) {
         ContentValues args = new ContentValues();
         args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
         args.put(KEY_CALENDARSTR  , a.time.toString());
         args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
         args.put(KEY_WORDCNT       , a.wordCnt);
         args.put(KEY_TEXT       , a.text);
-        args.put(KEY_ANALYSISRAW  , a.analysisRaw);
-        args.put(KEY_JOY          , a.jasdf[0]);
-        args.put(KEY_ANGER        , a.jasdf[1]);
-        args.put(KEY_SADNESS      , a.jasdf[2]);
-        args.put(KEY_DISGUST      , a.jasdf[3]);
-        args.put(KEY_FEAR         , a.jasdf[4]);
-        args.put(KEY_TOPEMOTION   , a.topEmotion);
-        boolean ret = mDb.update(TABLE_NOTES, args, KEY_ROWID + "=" + _id, null) > 0;
+        args.put(KEY_ANALYZED     , a.analyzed);
+        if(a.analyzed) {
+            args.put(KEY_ANALYSISRAW, a.analysisRaw);
+            args.put(KEY_JOY, a.jasdf[0]);
+            args.put(KEY_ANGER, a.jasdf[1]);
+            args.put(KEY_SADNESS, a.jasdf[2]);
+            args.put(KEY_DISGUST, a.jasdf[3]);
+            args.put(KEY_FEAR, a.jasdf[4]);
+            args.put(KEY_TOPEMOTION, a.topEmotion);
 
-        //update sentences
-        if(bAnalyzed) {
+            //update sentences
             deleteSentencesByNoteId(_id);
             for (NoteActivity.sentenceEmotion s : a.sentences) {
                 insertSentence(_id, s);
             }
         }
-        return ret;
+        return mDb.update(TABLE_NOTES, args, KEY_ROWID + "=" + _id, null) > 0;
     }
 
 /*
@@ -237,7 +244,7 @@ public class DbAdapter {
 
     public Cursor fetchNotesList() {
         Cursor cursor = mDb.query(TABLE_NOTES, new String[] {KEY_ROWID,
-                        KEY_TEXT, KEY_WORDCNT, KEY_DATE, KEY_TOPEMOTION},
+                        KEY_TEXT, KEY_DATE, KEY_TOPEMOTION, KEY_ANALYZED},
                 null, null, null, null,  KEY_ROWID + " DESC", null);
 
         if (cursor != null) {

@@ -1,11 +1,16 @@
 package com.ak.jourknow;
 
+import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.support.design.widget.FloatingActionButton;
+import android.support.v4.content.ContextCompat;
+import android.support.v4.widget.CursorAdapter;
 import android.support.v4.widget.SimpleCursorAdapter;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
@@ -15,14 +20,18 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.TextView;
+
+import org.w3c.dom.Text;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     private DbAdapter dbHelper;
-    private SimpleCursorAdapter dataAdapter;
+    private MyCursorAdapter customAdapter;
     private ListView listView;
     public final static String EXTRA_ID = "com.ak.jourknow.id";
 
@@ -85,7 +94,10 @@ public class MainActivity extends AppCompatActivity
         if (id == R.id.action_settings) {
             return true;
         }
-
+        else if (id == R.id.action_report) {
+            Intent intent = new Intent(this, ReportActivity.class);
+            startActivity(intent);
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -132,32 +144,11 @@ public class MainActivity extends AppCompatActivity
         if(cursor != null)
             rowCnt = cursor.getCount();
 
-        // The desired columns to be bound
-        String[] columns = new String[]{
-                DbAdapter.KEY_DATE,
-                DbAdapter.KEY_TEXT,
-                DbAdapter.KEY_WORDCNT
-        };
-
-        // the XML defined views which the data will be bound to
-        int[] to = new int[]{
-                R.id.textViewDate,
-                R.id.textViewSnippet,
-                R.id.textViewLength
-        };
-
-        // create the adapter using the cursor pointing to the desired data
-        //as well as the layout information
-        dataAdapter = new SimpleCursorAdapter(
-                this, R.layout.listview_item,
-                cursor,
-                columns,
-                to,
-                0);
+        customAdapter = new MyCursorAdapter(this, cursor, 0);
 
         listView = (ListView) findViewById(R.id.listView);
         // Assign adapter to ListView
-        listView.setAdapter(dataAdapter);
+        listView.setAdapter(customAdapter);
 
         // cursor.close(); //can't close, o/w error android.database.StaleDataException: Attempting to access a closed CursorWindow.Most probable cause: cursor is deactivated prior to calling this method. Can close in onPause in future.
 
@@ -177,5 +168,34 @@ public class MainActivity extends AppCompatActivity
 
         return rowCnt;
 
+    }
+
+    //to be able to change color for each listview item: learned from https://coderwall.com/p/fmavhg/android-cursoradapter-with-custom-layout-and-how-to-use-it
+    public class MyCursorAdapter extends CursorAdapter {
+        private LayoutInflater cursorInflater;
+        public MyCursorAdapter(Context context, Cursor cursor, int flags) {
+            super(context, cursor, flags);
+            cursorInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        }
+
+        public void bindView(View view, Context context, Cursor c) {
+            TextView tvDate = (TextView)view.findViewById(R.id.textViewDate);
+            tvDate.setText(c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_DATE)));
+
+            TextView tvSnippet = (TextView)view.findViewById(R.id.textViewSnippet);
+            tvSnippet.setText(c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_TEXT)));
+            boolean analyzed = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_ANALYZED)) > 0;
+            tvSnippet.setBackgroundColor(Color.WHITE);
+            if(analyzed){
+                int colorIdx = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPEMOTION));
+                if(colorIdx >= 0) {
+                    tvSnippet.setBackgroundColor(Color.parseColor(NoteActivity.jasdfColors[colorIdx]));
+                }
+            }
+        }
+
+        public View newView(Context context, Cursor cursor, ViewGroup parent) {
+            return cursorInflater.inflate(R.layout.listview_item, parent, false);
+        }
     }
 }

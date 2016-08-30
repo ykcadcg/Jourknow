@@ -12,5 +12,12 @@
     <string name="app_id">579c4bfb</string>
     <string name="pleaseSpeak">Please speak</string>
     <string name="errorCode">Internal error. Code: </string>
-
+    <string name="trend">Trend</string>
+    <string-array name="emotions">
+        <item>Joy</item>
+        <item>Anger</item>
+        <item>Sadness</item>
+        <item>Disgust</item>
+        <item>Fear</item>
+    </string-array>
 </resources>

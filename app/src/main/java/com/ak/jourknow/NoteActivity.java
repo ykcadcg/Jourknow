@@ -30,9 +30,13 @@ import java.util.List;
 import java.util.Locale;
 
 import com.github.mikephil.charting.charts.BubbleChart;
+import com.github.mikephil.charting.components.AxisBase;
+import com.github.mikephil.charting.components.Legend;
+import com.github.mikephil.charting.components.XAxis;
 import com.github.mikephil.charting.data.BubbleData;
 import com.github.mikephil.charting.data.BubbleDataSet;
 import com.github.mikephil.charting.data.BubbleEntry;
+import com.github.mikephil.charting.formatter.AxisValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IBubbleDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 import com.ibm.watson.developer_cloud.tone_analyzer.v3.ToneAnalyzer;
@@ -77,13 +81,14 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private int mRowId;
     private NoteData mNoteData;
     boolean recordGranted = false;
-    private boolean mTextChanged, mAnalyzed;
+    private boolean mTextChanged;
+    private ArrayList<String> mXLables;
 
     //AI
     static ToneAnalyzer mToneAnalyzer = new ToneAnalyzer(ToneAnalyzer.VERSION_DATE_2016_05_19);
 
     //UI
-    public final String[] jasdfColors = new String[]{ //strong/ median for each emotion
+    public static final String[] jasdfColors = new String[]{ //strong/ median for each emotion
             "#FFD629", "#FFF173",//joy
             "#E80521", "#FFA197",//anger
             "#086DB2", "#69C3E2",//sadness
@@ -114,7 +119,6 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mNoteData = new NoteData();
         mTextChanged = false;
         mEditText.addTextChangedListener(textWatcher);
-        mAnalyzed = false;
 
         requestRecordPermission();
 
@@ -145,24 +149,32 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mDbHelper.open();
         //load note
         Cursor cursor = mDbHelper.queryNoteById(mRowId);
+
         if(cursor != null) {
             mNoteData.text = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_TEXT));
-            mNoteData.analysisRaw = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_ANALYSISRAW));
-            mNoteData.wordCnt =  cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_WORDCNT));
-            mNoteData.jasdf[0] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_JOY));
-            mNoteData.jasdf[1] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_ANGER));
-            mNoteData.jasdf[2] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_SADNESS));
-            mNoteData.jasdf[3] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_DISGUST));
-            mNoteData.jasdf[4] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_FEAR));
-            mNoteData.topEmotion = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_TOPEMOTION));
+            mNoteData.wordCnt = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_WORDCNT));
+            mNoteData.analyzed = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_ANALYZED)) > 0;
             mEditText.setText(mNoteData.text);
 
+            if(mNoteData.analyzed) {
+                mNoteData.analysisRaw = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_ANALYSISRAW));
+                mNoteData.jasdf[0] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_JOY));
+                mNoteData.jasdf[1] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_ANGER));
+                mNoteData.jasdf[2] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_SADNESS));
+                mNoteData.jasdf[3] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_DISGUST));
+                mNoteData.jasdf[4] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_FEAR));
+                mNoteData.topEmotion = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_TOPEMOTION));
+            }
             cursor.close();
         }
+        if(!mNoteData.analyzed) {
+            return;
+        }
+
         //load sentences
         mNoteData.sentences.clear();
         Cursor c = mDbHelper.querySentencesByNoteId(mRowId);
-        if(c != null) {
+        if (c != null) {
             if (c.moveToFirst()) {
                 do {
                     sentenceEmotion sen = new sentenceEmotion(
@@ -291,7 +303,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         }
         else {
             if (mTextChanged)
-                mDbHelper.updateNote(mRowId, mNoteData, mAnalyzed);
+                mDbHelper.updateNote(mRowId, mNoteData);
         }
         mDbHelper.close();
     }
@@ -440,8 +452,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // 退出时释放连接
-        mIat.cancel();
+        if(mIat.isListening())
+            mIat.cancel();
         mIat.destroy();
     }
 
@@ -456,12 +468,12 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             input_from = from;
             input_to = to;
         }
-        long sentenceId;
-        int topEmotion; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
-        float score;
-        String text;
-        int input_from;
-        int input_to;
+        long sentenceId = -1;
+        int topEmotion = -1; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
+        float score = -1;
+        String text = null;
+        int input_from = -1;
+        int input_to = -1;
     }
 
     public int emotionIdx(String emotion){
@@ -484,15 +496,19 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     public class NoteData{
         Calendar time;
         String text;
-        String analysisRaw;
         int wordCnt;
-        float[] jasdf = {0,0,0,0,0}; //scores: joy, anger, sadness, disgust, fear   //{.9f, .8f, .7f, .6f, .5f};//
-        int topEmotion; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
+        boolean analyzed;
+
+        String analysisRaw;
+        float[] jasdf = {-1f, -1f, -1f, -1f, -1f}; //scores: joy, anger, sadness, disgust, fear   //{.9f, .8f, .7f, .6f, .5f};//
+        int topEmotion = -1; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
         ArrayList<sentenceEmotion> sentences;
 
         NoteData(){
             time = Calendar.getInstance();
             sentences = new ArrayList<>();
+            analysisRaw = null;
+            analyzed = false;
         }
 
         void Analyze(String text){
@@ -511,7 +527,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 return;
             }
 
-            mAnalyzed = true;
+            mNoteData.analyzed = true;
             List<ToneScore> toneScores = emotionTone.getTones();
             float maxScore = 0;
             int topEmo = -1;
@@ -532,6 +548,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
             //update emotional sentences
             List<SentenceTone> sentenceTones = tone.getSentencesTone();
+            if(sentenceTones == null) //no emotion for this note - it happens
+                return;
             mNoteData.sentences.clear();
             for(SentenceTone t : sentenceTones){
                 if(t.getTones().size() <= 0) //no emotion for this sentence - it happens
@@ -573,7 +591,9 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mChart.setScaleEnabled(true);
         mChart.setMaxVisibleValueCount(5);
         mChart.setPinchZoom(true);
-        mChart.getXAxis().setEnabled(false);
+        mChart.getXAxis().setDrawGridLines(false);
+        mChart.getXAxis().setTextColor(getResources().getColor(R.color.colorPrimaryDark));
+        mChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
         mChart.getAxisLeft().setEnabled(false);
         mChart.getAxisRight().setEnabled(false);
         mChart.setDescription("");
@@ -581,18 +601,36 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mChart.getXAxis().setAxisMinValue(-0.5f);
         mChart.getXAxis().setAxisMaxValue(5.5f);
         mChart.setDrawBorders(true);
-        mChart.setBorderColor(getResources().getColor(R.color.colorPrimary));
+        mChart.setBorderColor(getResources().getColor(R.color.colorPrimaryDark));
+
+
+        AxisValueFormatter xFormatter = new AxisValueFormatter() {
+            @Override
+            public String getFormattedValue(float value, AxisBase axis) {
+                if((int)value < 0 || (int)value >= mXLables.size())
+                    return "";
+                return mXLables.get((int)value);
+            }
+            @Override
+            public int getDecimalDigits() {
+                return 0;
+            }
+        };
+        mChart.getXAxis().setValueFormatter(xFormatter);
     }
 
     private void updateChart(){
-        if(mEditText.getText().length() <= 0)
+        if((!mNoteData.analyzed) || (mEditText.getText().length() <= 0))
             return;
+
+        mXLables = new ArrayList<>();
         ArrayList<IBubbleDataSet> dataSets = new ArrayList<>();
         ArrayList<BubbleEntry> vals = new ArrayList<>();
         int[] colors = new int[5];
         for(int i = 0, pos = 0; i < 5; ++i) {
 //            if(mNoteData.jasdf[i] < noteEmotionThreshold)
 //                continue;
+            mXLables.add(getResources().getStringArray(R.array.emotions)[i]);
             BubbleEntry entry = new BubbleEntry(pos, 0, mNoteData.jasdf[i]); //x, y, size
             vals.add(entry);
             colors[pos] = Color.parseColor(jasdfColors[i * 2]);
@@ -621,7 +659,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     private void updateColoredText(){
-        if((mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
+        if((!mNoteData.analyzed) || (mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
             return;
         //spannable: see http://blog.csdn.net/harvic880925/article/details/38984705
         SpannableString spanText = new SpannableString(mNoteData.text);
