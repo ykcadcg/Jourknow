@@ -77,7 +77,7 @@ public class ReportActivity extends AppCompatActivity {
 
     private boolean updateChart(){
 
-        String[] columns = new String[]{dbHelper.KEY_DATE, dbHelper.KEY_JOY, dbHelper.KEY_ANGER, dbHelper.KEY_SADNESS, dbHelper.KEY_DISGUST, dbHelper.KEY_FEAR};
+        String[] columns = new String[]{dbHelper.KEY_DATE, dbHelper.KEY_ANALYZED, dbHelper.KEY_JOY, dbHelper.KEY_ANGER, dbHelper.KEY_SADNESS, dbHelper.KEY_DISGUST, dbHelper.KEY_FEAR};
         Cursor cursor = dbHelper.fetchNotesByColumns(columns);
         if(cursor == null || (mRowCnt = cursor.getCount()) == 0)
             return false;
@@ -88,15 +88,17 @@ public class ReportActivity extends AppCompatActivity {
             valueSets.add(new ArrayList<Entry>());
         }
 
-        int rowId = 0;
+        int entryId = 0;
         do{
+            if(cursor.getInt(cursor.getColumnIndex(dbHelper.KEY_ANALYZED)) == 0) //not analyzed
+                continue;
             String date = cursor.getString(cursor.getColumnIndex(dbHelper.KEY_DATE));
             mXLables.add(date);
             for (int emo = 0; emo < 5; emo++) {
-                float score = cursor.getFloat(cursor.getColumnIndex(columns[emo + 1]));
-                valueSets.get(emo).add(new Entry(rowId, score));
+                float score = cursor.getFloat(cursor.getColumnIndex(columns[emo + 2])); //from KEY_JOY
+                valueSets.get(emo).add(new Entry(entryId, score));
             }
-            rowId++;
+            entryId++;
         }
         while (cursor.moveToNext());
 
@@ -109,11 +111,14 @@ public class ReportActivity extends AppCompatActivity {
             d.setColor(color);
             d.setCircleColor(color);
             d.setDrawValues(false);
+            if(emo == 0)
+                d.setDrawFilled(true);
             dataSets.add(d);
         }
 
         LineData data = new LineData(dataSets);
         mChart.setData(data);
+        //mChart.animateX(200);
         mChart.invalidate();
         return true;
     }
