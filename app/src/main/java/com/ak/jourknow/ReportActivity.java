@@ -48,7 +48,6 @@ public class ReportActivity extends AppCompatActivity {
 
         mChart.getAxisRight().setEnabled(false);
         mChart.getAxisLeft().setDrawAxisLine(false);
-        mChart.getAxisLeft().setAxisMinValue(0);
         mChart.getXAxis().setDrawGridLines(false);
         mChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
         mChart.setTouchEnabled(true);
@@ -107,7 +106,7 @@ public class ReportActivity extends AppCompatActivity {
             LineDataSet d = new LineDataSet(valueSets.get(emo), getResources().getStringArray(R.array.emotions)[emo]);
             d.setLineWidth(2.5f);
             d.setCircleRadius(4f);
-            int color = Color.parseColor(NoteActivity.jasdfColors[emo * 2]);
+            int color = Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[emo * 2]);
             d.setColor(color);
             d.setCircleColor(color);
             d.setDrawValues(false);

@@ -17,7 +17,6 @@ public class DbAdapter {
     //Notes table
     public static final String KEY_ROWID        = "_id";
     public static final String KEY_CALENDARMS   = "calendarMs";
-    public static final String KEY_CALENDARSTR  = "calendarStr";
     public static final String KEY_DATE         = "date";
     public static final String KEY_WORDCNT      = "wordCnt";
     public static final String KEY_TEXT         = "text";
@@ -27,13 +26,13 @@ public class DbAdapter {
     public static final String KEY_SADNESS      = "sadness";
     public static final String KEY_DISGUST      = "disgust";
     public static final String KEY_FEAR         = "fear";
-    public static final String KEY_TOPEMOTION   = "topEmotion";
+    public static final String KEY_TOPEMOIDX    = "topEmotionIdx";
+    public static final String KEY_TOPSCORE     = "topScore";
     public static final String KEY_ANALYZED     = "analyzed";
 
     //Sentences table
     public static final String KEY_NOTEID   = "noteId";
     public static final String KEY_SENTENCEID   = "sentenceId";
-    public static final String KEY_SCORE   = "score";
     public static final String KEY_INPUTFROM   = "inputFrom";
     public static final String KEY_INPUTTO   = "inputTo";
 
@@ -53,7 +52,6 @@ public class DbAdapter {
             "CREATE TABLE if not exists " + TABLE_NOTES + " (" +
                     KEY_ROWID + " integer PRIMARY KEY autoincrement," +
                     KEY_CALENDARMS + "," +
-                    KEY_CALENDARSTR + "," +
                     KEY_DATE + "," +
                     KEY_WORDCNT + "," +
                     KEY_TEXT + "," +
@@ -64,7 +62,8 @@ public class DbAdapter {
                     KEY_SADNESS + "," +
                     KEY_DISGUST + "," +
                     KEY_FEAR + "," +
-                    KEY_TOPEMOTION + "," +
+                    KEY_TOPEMOIDX + "," +
+                    KEY_TOPSCORE + "," +
     " UNIQUE (" + KEY_CALENDARMS +"));";
 
     //multiple tables: learned from http://www.androidhive.info/2013/09/android-sqlite-database-with-multiple-tables/
@@ -73,8 +72,8 @@ public class DbAdapter {
                     KEY_ROWID + " integer PRIMARY KEY autoincrement," +
                     KEY_NOTEID + "," +
                     KEY_SENTENCEID + "," +
-                    KEY_TOPEMOTION + "," +
-                    KEY_SCORE + "," +
+                    KEY_TOPEMOIDX + "," +
+                    KEY_TOPSCORE + "," +
                     KEY_TEXT + "," +
                     KEY_INPUTFROM + "," +
                     KEY_INPUTTO + "," +
@@ -137,7 +136,6 @@ public class DbAdapter {
     public long insertNote(NoteActivity.NoteData a) {
         ContentValues args = new ContentValues();
         args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
-        args.put(KEY_CALENDARSTR  , a.time.toString());
         args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
         args.put(KEY_WORDCNT      , a.wordCnt);
         args.put(KEY_TEXT         , a.text);
@@ -149,11 +147,13 @@ public class DbAdapter {
             args.put(KEY_SADNESS, a.jasdf[2]);
             args.put(KEY_DISGUST, a.jasdf[3]);
             args.put(KEY_FEAR, a.jasdf[4]);
-            args.put(KEY_TOPEMOTION, a.topEmotion);
+            args.put(KEY_TOPEMOIDX, a.topEmotionIdx);
+            args.put(KEY_TOPSCORE, a.topScore);
+
         }
         long noteId = mDb.insert(TABLE_NOTES, null, args);
 
-        if(a.sentences != null) {
+        if(a.analyzed) {
             for (NoteActivity.sentenceEmotion s : a.sentences) {
                 insertSentence(noteId, s);
             }
@@ -165,8 +165,8 @@ public class DbAdapter {
         ContentValues args = new ContentValues();
         args.put(KEY_NOTEID         , noteId);
         args.put(KEY_SENTENCEID     , a.sentenceId);
-        args.put(KEY_TOPEMOTION     , a.topEmotion);
-        args.put(KEY_SCORE          , a.score);
+        args.put(KEY_TOPEMOIDX      , a.topEmotionIdx);
+        args.put(KEY_TOPSCORE       , a.topScore);
         args.put(KEY_TEXT           , a.text);
         args.put(KEY_INPUTFROM      , a.input_from);
         args.put(KEY_INPUTTO        , a.input_to);
@@ -187,7 +187,6 @@ public class DbAdapter {
     public boolean updateNote(long _id, NoteActivity.NoteData a) {
         ContentValues args = new ContentValues();
         args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
-        args.put(KEY_CALENDARSTR  , a.time.toString());
         args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
         args.put(KEY_WORDCNT       , a.wordCnt);
         args.put(KEY_TEXT       , a.text);
@@ -199,7 +198,8 @@ public class DbAdapter {
             args.put(KEY_SADNESS, a.jasdf[2]);
             args.put(KEY_DISGUST, a.jasdf[3]);
             args.put(KEY_FEAR, a.jasdf[4]);
-            args.put(KEY_TOPEMOTION, a.topEmotion);
+            args.put(KEY_TOPEMOIDX, a.topEmotionIdx);
+            args.put(KEY_TOPSCORE, a.topScore);
 
             //update sentences
             deleteSentencesByNoteId(_id);
@@ -242,9 +242,19 @@ public class DbAdapter {
         return cursor;
     }
 
+    public Cursor querySentencesByScore(float scoreThreshold) throws SQLException {
+        Cursor cursor = mDb.query(TABLE_SENTENCES, null,
+                KEY_TOPSCORE + " >= " + scoreThreshold,
+                null, null, null, KEY_TOPSCORE + " DESC ", null);
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        return cursor;
+    }
+
     public Cursor fetchNotesList() {
         Cursor cursor = mDb.query(TABLE_NOTES, new String[] {KEY_ROWID,
-                        KEY_TEXT, KEY_DATE, KEY_TOPEMOTION, KEY_ANALYZED},
+                        KEY_TEXT, KEY_DATE, KEY_TOPEMOIDX, KEY_TOPSCORE, KEY_ANALYZED},
                 null, null, null, null,  KEY_ROWID + " DESC", null);
 
         if (cursor != null) {

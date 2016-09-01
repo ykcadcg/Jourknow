@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
     private DbAdapter dbHelper;
-    private MyCursorAdapter customAdapter;
+    private BkgdCursorAdapter customAdapter;
     private ListView listView;
     public final static String EXTRA_ID = "com.ak.jourknow.id";
 
@@ -98,6 +98,10 @@ public class MainActivity extends AppCompatActivity
             Intent intent = new Intent(this, ReportActivity.class);
             startActivity(intent);
         }
+        else if (id == R.id.action_quotes) {
+            Intent intent = new Intent(this, QuotesActivity.class);
+            startActivity(intent);
+        }
         return super.onOptionsItemSelected(item);
     }
 
@@ -144,7 +148,7 @@ public class MainActivity extends AppCompatActivity
         if(cursor != null)
             rowCnt = cursor.getCount();
 
-        customAdapter = new MyCursorAdapter(this, cursor, 0);
+        customAdapter = new BkgdCursorAdapter(this, cursor, 0);
 
         listView = (ListView) findViewById(R.id.listView);
         // Assign adapter to ListView
@@ -171,9 +175,9 @@ public class MainActivity extends AppCompatActivity
     }
 
     //to be able to change color for each listview item: learned from https://coderwall.com/p/fmavhg/android-cursoradapter-with-custom-layout-and-how-to-use-it
-    public class MyCursorAdapter extends CursorAdapter {
+    public class BkgdCursorAdapter extends CursorAdapter {
         private LayoutInflater cursorInflater;
-        public MyCursorAdapter(Context context, Cursor cursor, int flags) {
+        public BkgdCursorAdapter(Context context, Cursor cursor, int flags) {
             super(context, cursor, flags);
             cursorInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         }
@@ -185,11 +189,12 @@ public class MainActivity extends AppCompatActivity
             TextView tvSnippet = (TextView)view.findViewById(R.id.textViewSnippet);
             tvSnippet.setText(c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_TEXT)));
             boolean analyzed = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_ANALYZED)) > 0;
+            float score = c.getFloat(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPSCORE));
             tvSnippet.setBackgroundColor(Color.WHITE);
-            if(analyzed){
-                int colorIdx = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPEMOTION));
+            if(analyzed && (score >= NoteActivity.noteEmotionThreshold)){
+                int colorIdx = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPEMOIDX));
                 if(colorIdx >= 0) {
-                    tvSnippet.setBackgroundColor(Color.parseColor(NoteActivity.jasdfColors[colorIdx]));
+                    tvSnippet.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[colorIdx]));
                 }
             }
         }

@@ -11,11 +11,15 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.text.Editable;
+import android.text.Html;
 import android.text.Spannable;
 import android.text.SpannableString;
+import android.text.SpannableStringBuilder;
 import android.text.TextWatcher;
 import android.text.style.BackgroundColorSpan;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -86,16 +90,6 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
     //AI
     static ToneAnalyzer mToneAnalyzer = new ToneAnalyzer(ToneAnalyzer.VERSION_DATE_2016_05_19);
-
-    //UI
-    public static final String[] jasdfColors = new String[]{ //strong/ median for each emotion
-            "#FFD629", "#FFF173",//joy
-            "#E80521", "#FFA197",//anger
-            "#086DB2", "#69C3E2",//sadness
-            "#592684", "#A779D8", //disgust
-            "#325E2B", "#7DB258"//fear
-    };
-
     private BubbleChart mChart;
 
     @Override
@@ -137,6 +131,38 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             startListen();
         }
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.note, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        int id = item.getItemId();
+
+        //noinspection SimplifiableIfStatement
+        if (id == R.id.action_note_delete) {
+            mDbHelper.open();
+            mDbHelper.deleteNote(mRowId);
+            Intent intent = new Intent(this, MainActivity.class);
+            startActivity(intent);
+            return true;
+        }else if (id == R.id.action_note_share){
+            //Intent i1 = new Intent(android.content.Intent.ACTION_SEND);
+            //i1.setType("text/html");
+            //i1.putExtra(android.content.Intent.EXTRA_SUBJECT, "Speech Master");
+            //i1.putExtra(android.content.Intent.EXTRA_TEXT, Html.fromHtml(scriptHtml + summaryHtml));
+            //startActivity(Intent.createChooser(i1, getResources().getText(R.string.shareWith)));
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     private TextWatcher textWatcher = new TextWatcher() {
         public void afterTextChanged(Editable s) {
             mTextChanged = true;
@@ -163,7 +189,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 mNoteData.jasdf[2] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_SADNESS));
                 mNoteData.jasdf[3] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_DISGUST));
                 mNoteData.jasdf[4] = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_FEAR));
-                mNoteData.topEmotion = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_TOPEMOTION));
+                mNoteData.topEmotionIdx = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_TOPEMOIDX));
+                mNoteData.topScore = cursor.getFloat(cursor.getColumnIndex(mDbHelper.KEY_TOPSCORE));
             }
             cursor.close();
         }
@@ -179,8 +206,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 do {
                     sentenceEmotion sen = new sentenceEmotion(
                             c.getInt(c.getColumnIndex(mDbHelper.KEY_SENTENCEID)),
-                            c.getInt(c.getColumnIndex(mDbHelper.KEY_TOPEMOTION)),
-                            c.getFloat(c.getColumnIndex(mDbHelper.KEY_SCORE)),
+                            c.getInt(c.getColumnIndex(mDbHelper.KEY_TOPEMOIDX)),
+                            c.getFloat(c.getColumnIndex(mDbHelper.KEY_TOPSCORE)),
                             c.getString(c.getColumnIndex(mDbHelper.KEY_TEXT)),
                             c.getInt(c.getColumnIndex(mDbHelper.KEY_INPUTFROM)),
                             c.getInt(c.getColumnIndex(mDbHelper.KEY_INPUTTO))
@@ -457,20 +484,21 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mIat.destroy();
     }
 
-    private final float sentenceEmotionThreshold = 0.5f;
-    private final float strongEmotionThreshold = 0.75f;
+    public final static float sentenceEmotionThreshold = 0.5f;
+    public final static float noteEmotionThreshold = 0.5f;
+    public final static float strongEmotionThreshold = 0.75f;
     public class sentenceEmotion{
         sentenceEmotion(long id, int topEmo, float s, String t, int from, int to){
             sentenceId = id;
-            topEmotion = topEmo;
-            score = s;
+            topEmotionIdx = topEmo;
+            topScore = s;
             text = t;
             input_from = from;
             input_to = to;
         }
         long sentenceId = -1;
-        int topEmotion = -1; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
-        float score = -1;
+        int topEmotionIdx = -1; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
+        float topScore = -1;
         String text = null;
         int input_from = -1;
         int input_to = -1;
@@ -501,7 +529,8 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
         String analysisRaw;
         float[] jasdf = {-1f, -1f, -1f, -1f, -1f}; //scores: joy, anger, sadness, disgust, fear   //{.9f, .8f, .7f, .6f, .5f};//
-        int topEmotion = -1; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
+        int topEmotionIdx = -1; //0-9, emotionIdx*2 + 1(if moderate). Default -1.
+        float topScore = 0;
         ArrayList<sentenceEmotion> sentences;
 
         NoteData(){
@@ -529,22 +558,29 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
             mNoteData.analyzed = true;
             List<ToneScore> toneScores = emotionTone.getTones();
-            float maxScore = 0;
-            int topEmo = -1;
+            float scoreMax = 0;
+            int idxMax = -1;
             for (ToneScore s : toneScores) {
                 float score = s.getScore().floatValue();
                 int idx = emotionIdx(s.getId());
                 if(idx != -1){
                     mNoteData.jasdf[idx] = score;
-                    if(score > maxScore){
-                        maxScore = score;
-                        topEmo = idx * 2;
-                        if(maxScore < strongEmotionThreshold)
-                            topEmo += 1; //moderate emotion
+                    if(score > scoreMax){
+                        scoreMax = score;
+                        idxMax = idx;
                     }
                 }
             }
-            mNoteData.topEmotion = topEmo;
+            //assign topEmoIdx only when idx is not -1 && score>=threshold
+            int topEmoIdx = -1;
+            if(idxMax != -1) {
+                topEmoIdx = idxMax * 2;
+                if (scoreMax < strongEmotionThreshold) { //moderate emotion
+                    topEmoIdx += 1;
+                }
+            }
+            mNoteData.topEmotionIdx = topEmoIdx;
+            mNoteData.topScore = scoreMax;
 
             //update emotional sentences
             List<SentenceTone> sentenceTones = tone.getSentencesTone();
@@ -561,22 +597,28 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 }
                 List<ToneScore> scores = c.getTones();
                 //find max score that's >threshold
-                float maxScoreS = 0;
-                int topEmoS = -1;
-                for(ToneScore s: scores){
+                float scoreMaxS = 0;
+                int idxMaxS = -1;
+                for(ToneScore s: scores) {
                     float score = s.getScore().floatValue();
                     int idx = emotionIdx(s.getId());
-                    if(idx != -1) {
-                        if (score > maxScoreS) {
-                            maxScoreS = score;
-                            topEmoS = idx * 2;
-                            if(maxScoreS < strongEmotionThreshold)
-                                topEmoS += 1; //moderate emotion
+                    if (idx != -1){
+                        if (score > scoreMaxS) {
+                            scoreMaxS = score;
+                            idxMaxS = idx;
                         }
                     }
                 }
+                //assign topEmoIdx only when idxMaxS is not -1
+                int topEmoIdxS = -1;
+                if(idxMaxS != -1) {
+                    topEmoIdxS = idxMaxS * 2;
+                    if (scoreMaxS < strongEmotionThreshold) { //moderate emotion
+                        topEmoIdxS += 1;
+                    }
+                }
                 //if(maxScoreS > sentenceEmotionThreshold)
-                mNoteData.sentences.add(new sentenceEmotion(t.getId(), topEmoS, maxScoreS, t.getText(), t.getInputFrom(), t.getInputTo()));
+                mNoteData.sentences.add(new sentenceEmotion(t.getId(), topEmoIdxS, scoreMaxS, t.getText(), t.getInputFrom(), t.getInputTo()));
             }
         }
     };
@@ -633,7 +675,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             mXLables.add(getResources().getStringArray(R.array.emotions)[i]);
             BubbleEntry entry = new BubbleEntry(pos, 0, mNoteData.jasdf[i]); //x, y, size
             vals.add(entry);
-            colors[pos] = Color.parseColor(jasdfColors[i * 2]);
+            colors[pos] = Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[i * 2]);
             ++pos;
         }
         //        if(dataSets.size() == 0){ //no emotion detected
@@ -662,18 +704,13 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         if((!mNoteData.analyzed) || (mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
             return;
         //spannable: see http://blog.csdn.net/harvic880925/article/details/38984705
-        SpannableString spanText = new SpannableString(mNoteData.text);
-        BackgroundColorSpan[] spans = new BackgroundColorSpan[10];
-        for (int i = 0; i < 10; ++i)
-        {
-            spans[i] = new BackgroundColorSpan(Color.parseColor(jasdfColors[i]));
-        }
+        SpannableStringBuilder spanText = new SpannableStringBuilder(mNoteData.text);
 
         for(sentenceEmotion sen : mNoteData.sentences){
-            if(sen.score > sentenceEmotionThreshold){
-                int spanIdx = sen.topEmotion;
-                if(spanIdx >= 0 && spanIdx < spans.length)
-                    spanText.setSpan(spans[spanIdx], sen.input_from, sen.input_to, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if((sen.topScore >= sentenceEmotionThreshold) && (sen.topEmotionIdx >= 0)) {
+                //you can only use a span once, so i had to set another span, even if it has the same value. http://stackoverflow.com/questions/25049913/setspan-multiple-times
+                BackgroundColorSpan span = new BackgroundColorSpan(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[sen.topEmotionIdx]));
+                spanText.setSpan(span, sen.input_from, sen.input_to, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
         }
         mColoredText.setText(spanText);

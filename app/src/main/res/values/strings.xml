@@ -20,4 +20,24 @@
         <item>Disgust</item>
         <item>Fear</item>
     </string-array>
+    <!-- hex:"#FFD629", "#FFF173",//joy
+            "#E80521", "#FFA197",//anger
+            "#086DB2", "#69C3E2",//sadness
+            "#592684", "#A779D8", //disgust
+            "#325E2B", "#7DB258"//fear -->
+    <string-array name="jasdfColors">
+        <item>#FFD629</item>
+        <item>#FFF173</item>
+        <item>#E80521</item>
+        <item>#FFA197</item>
+        <item>#086DB2</item>
+        <item>#69C3E2</item>
+        <item>#592684</item>
+        <item>#A779D8</item>
+        <item>#325E2B</item>
+        <item>#7DB258</item>
+    </string-array>
+    <string name="quotes">Quotes</string>
+    <string name="delete">Delete</string>
+    <string name="share">Share</string>
 </resources>
