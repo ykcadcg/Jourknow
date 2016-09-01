@@ -7,7 +7,7 @@
     android:icon="@drawable/ic_timeline_white_24px"
     app:showAsAction="ifRoom" />
     <item android:id="@+id/action_quotes"
-        android:title="@string/quotes"
+        android:title="@string/topEmotionalQuotes"
         android:orderInCategory="200"
         android:icon="@drawable/ic_format_quote_white_24px"
         app:showAsAction="ifRoom" />

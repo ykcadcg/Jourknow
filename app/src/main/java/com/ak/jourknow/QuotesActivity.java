@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.TextView;
@@ -83,7 +84,7 @@ public class QuotesActivity extends AppCompatActivity {
             float score = c.getFloat(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPSCORE));
             if((score >= NoteActivity.sentenceEmotionThreshold) && (emotionIdx / 2 == mEmotionSelected)) {
                 tvQuote.setVisibility(View.VISIBLE);
-                tvQuote.setText(c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_TEXT)));
+                tvQuote.setText("\"" + c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_TEXT)) + "\"");
                 //tvQuote.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[emotionIdx]));
                 int strong = NoteActivity.jasdfColors[mEmotionSelected * 2];
                 int moderate = NoteActivity.jasdfColors[mEmotionSelected * 2 + 1];
@@ -99,28 +100,22 @@ public class QuotesActivity extends AppCompatActivity {
         }
     }
 
-    public void onRadioButtonClicked(View view) {
-        boolean checked = ((RadioButton) view).isChecked();
+    public void onButtonClicked(View view) {
         switch(view.getId()) {
             case R.id.joy:
-                if (checked)
                     mEmotionSelected = 0;
                     break;
             case R.id.anger:
-                if (checked)
                     mEmotionSelected = 1;
                     break;
             case R.id.sadness:
-                if (checked)
-                    mEmotionSelected = 2;
+                mEmotionSelected = 2;
                 break;
             case R.id.disgust:
-                if (checked)
-                    mEmotionSelected = 3;
+                mEmotionSelected = 3;
                 break;
             case R.id.fear:
-                if (checked)
-                    mEmotionSelected = 4;
+                mEmotionSelected = 4;
                 break;
             default:
                 break;

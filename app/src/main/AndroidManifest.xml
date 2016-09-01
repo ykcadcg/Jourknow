@@ -39,7 +39,7 @@
                 android:value=".MainActivity" />
         </activity>
         <activity android:name=".QuotesActivity"
-            android:label="@string/quotes"
+            android:label="@string/topEmotionalQuotes"
             android:parentActivityName=".MainActivity">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"

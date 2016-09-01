@@ -48,9 +48,9 @@
         <item>#325E2B</item>
         <item>#7DB258</item>
     </string-array>
-    <string name="quotes">Quotes</string>
+    <string name="topEmotionalQuotes">Top Emotional Quotes</string>
     <string name="delete">Delete</string>
     <string name="share">Share</string>
-    <string name="memoryBalls">Memory Balls</string>
+    <string name="emotionBalls">Emotion Balls</string>
 
 </resources>
