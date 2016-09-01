@@ -12,7 +12,7 @@
     <string name="app_id">579c4bfb</string>
     <string name="pleaseSpeak">Please speak</string>
     <string name="errorCode">Internal error. Code: </string>
-    <string name="trend">Trend</string>
+    <string name="reports">Reports</string>
     <string-array name="emotions">
         <item>Joy</item>
         <item>Anger</item>
@@ -52,5 +52,9 @@
     <string name="delete">Delete</string>
     <string name="share">Share</string>
     <string name="emotionBalls">Emotion Balls</string>
+    <string name="emotionTrends">Emotion Trends</string>
+    <string name="typicalEmotions">Typical Emotions</string>
+    <string name="emotionalQuotes">Emotional Quotes</string>
+    <string name="emotionNumberDescription">(>0.5: moderate, >0.75: strong)</string>
 
 </resources>

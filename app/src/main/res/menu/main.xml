@@ -2,7 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/action_report"
-    android:title="@string/trend"
+    android:title="@string/reports"
     android:orderInCategory="100"
     android:icon="@drawable/ic_timeline_white_24px"
     app:showAsAction="ifRoom" />

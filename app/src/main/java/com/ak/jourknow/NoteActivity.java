@@ -90,7 +90,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
     //AI
     static ToneAnalyzer mToneAnalyzer = new ToneAnalyzer(ToneAnalyzer.VERSION_DATE_2016_05_19);
-    private BubbleChart mChart;
+    private BubbleChart mChart1;
 
     public static int[] jasdfColors = { //strong - moderate for each emotion
             -10711, -3725,
@@ -143,7 +143,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         //entering an existing note
         if(mRowId != -1){
             loadNoteData(mRowId);
-            mChart.setEnabled(false);
+            mChart1.setEnabled(false);
         }
         else {
             startListen();
@@ -645,25 +645,25 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
     private void initChart(){
         //init
-        mChart = (BubbleChart) findViewById(R.id.chart);
-        //mChart.setDescription("");
-        mChart.setDrawGridBackground(false);
-        mChart.setTouchEnabled(true);
-        mChart.setDragEnabled(true);
-        mChart.setScaleEnabled(true);
-        mChart.setMaxVisibleValueCount(5);
-        mChart.setPinchZoom(true);
-        mChart.getXAxis().setDrawGridLines(false);
-        mChart.getXAxis().setTextColor(getResources().getColor(R.color.colorPrimaryDark));
-        mChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
-        mChart.getXAxis().setAxisMinValue(-0.5f);
-        mChart.getXAxis().setAxisMaxValue(5.5f);
-        mChart.getAxisLeft().setEnabled(false);
-        mChart.getAxisRight().setEnabled(false);
-        mChart.setDescription(""); //title position is tricky
+        mChart1 = (BubbleChart) findViewById(R.id.chart);
+        //mChart1.setDescription("");
+        mChart1.setDrawGridBackground(false);
+        mChart1.setTouchEnabled(true);
+        mChart1.setDragEnabled(true);
+        mChart1.setScaleEnabled(true);
+        mChart1.setMaxVisibleValueCount(5);
+        mChart1.setPinchZoom(true);
+        mChart1.getXAxis().setDrawGridLines(false);
+        mChart1.getXAxis().setTextColor(getResources().getColor(R.color.colorPrimaryDark));
+        mChart1.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
+        mChart1.getXAxis().setAxisMinValue(-0.5f);
+        mChart1.getXAxis().setAxisMaxValue(5.5f);
+        mChart1.getAxisLeft().setEnabled(false);
+        mChart1.getAxisRight().setEnabled(false);
+        mChart1.setDescription(""); //title position is tricky
         //setBorderColor
-        //mChart.setDrawBorders(true);
-        //mChart.setBorderColor(getResources().getColor(R.color.colorPrimaryDark));
+        //mChart1.setDrawBorders(true);
+        //mChart1.setBorderColor(getResources().getColor(R.color.colorPrimaryDark));
 
         AxisValueFormatter xFormatter = new AxisValueFormatter() {
             @Override
@@ -677,7 +677,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 return 0;
             }
         };
-        mChart.getXAxis().setValueFormatter(xFormatter);
+        mChart1.getXAxis().setValueFormatter(xFormatter);
     }
 
     private void updateChart(){
@@ -698,10 +698,10 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             ++pos;
         }
         //        if(dataSets.size() == 0){ //no emotion detected
-        //            mChart.setVisibility(0);
+        //            mChart1.setVisibility(0);
         //            return;
         //        }
-        mChart.setEnabled(true);
+        mChart1.setEnabled(true);
         BubbleDataSet set = new BubbleDataSet(vals, "");
         set.setNormalizeSizeEnabled(false);
         set.setColors(colors);
@@ -712,11 +712,11 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         data.setDrawValues(false);
         data.setHighlightCircleWidth(1.5f);
 
-        mChart.setData(data);
+        mChart1.setData(data);
 
-        //mChart.setBackground()
-        //mChart.animateX(200);
-        mChart.invalidate();
+        //mChart1.setBackground()
+        //mChart1.animateX(200);
+        mChart1.invalidate();
     }
 
     private void updateColoredText(){

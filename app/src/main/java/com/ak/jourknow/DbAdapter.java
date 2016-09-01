@@ -272,4 +272,12 @@ public class DbAdapter {
         return cursor;
     }
 
+    public Cursor avgJasdf() {
+        Cursor cursor = mDb.rawQuery("SELECT AVG(joy), AVG(anger), AVG(sadness), AVG(disgust), AVG(fear) FROM " + TABLE_NOTES, null);
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        return cursor;
+    }
+
 }
