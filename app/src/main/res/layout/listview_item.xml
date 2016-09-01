@@ -3,13 +3,13 @@
     android:layout_width="fill_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:paddingLeft="6dip"
-    android:paddingRight="6dip">
+    android:paddingLeft="0dp"
+    android:paddingRight="0dp">
     <!-- android:layout_height="match_parent", so custom cursor adaptor bindview is not called multiple times:
     http://stackoverflow.com/questions/16991450/custom-cursoradapaters-bindview-called-77-times-have-i-done-something-wrong -->
 
     <TextView
-        android:layout_width="wrap_content"
+        android:layout_width="40dip"
         android:layout_height="match_parent"
         android:text="8/24"
         android:id="@+id/textViewDate"
@@ -32,6 +32,8 @@
         android:ellipsize="end"
         android:paddingTop="8dp"
         android:paddingBottom="8dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
         android:maxLines="2"
         android:layout_toRightOf="@+id/textViewDate"
         android:layout_toEndOf="@+id/textViewDate"

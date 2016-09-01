@@ -69,6 +69,14 @@ public class QuotesActivity extends AppCompatActivity {
             cursorInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         }
 
+        private int interpolateColorsCompact (int a, int b, float lerp)
+        {
+            int MASK1 = 0xff00ff, MASK2 = 0x00ff00;
+            int f2 = (int)(256 * lerp);
+            int f1 = 256 - f2;
+            return   ((((( a & MASK1 ) * f1 ) + ( ( b & MASK1 ) * f2 )) >> 8 ) & MASK1 )
+                    | ((((( a & MASK2 ) * f1 ) + ( ( b & MASK2 ) * f2 )) >> 8 ) & MASK2 );
+        }
         public void bindView(View view, Context context, Cursor c) {
             TextView tvQuote = (TextView)view.findViewById(R.id.quote);
             int emotionIdx = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPEMOIDX));
@@ -76,6 +84,11 @@ public class QuotesActivity extends AppCompatActivity {
             if((score >= NoteActivity.sentenceEmotionThreshold) && (emotionIdx / 2 == mEmotionSelected)) {
                 tvQuote.setVisibility(View.VISIBLE);
                 tvQuote.setText(c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_TEXT)));
+                //tvQuote.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[emotionIdx]));
+                int strong = NoteActivity.jasdfColors[mEmotionSelected * 2];
+                int moderate = NoteActivity.jasdfColors[mEmotionSelected * 2 + 1];
+                int color = interpolateColorsCompact(moderate, strong, (score - NoteActivity.sentenceEmotionThreshold) / (1.f- NoteActivity.sentenceEmotionThreshold));
+                tvQuote.setBackgroundColor(0xff000000 + color);
             }
             else{
                 tvQuote.setVisibility(View.GONE);
@@ -112,7 +125,7 @@ public class QuotesActivity extends AppCompatActivity {
             default:
                 break;
         }
-        listView.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[mEmotionSelected * 2 + 1]));
+        //listView.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[mEmotionSelected * 2 + 1]));
         listView.invalidateViews();
     }
 

@@ -255,7 +255,7 @@ public class DbAdapter {
     public Cursor fetchNotesList() {
         Cursor cursor = mDb.query(TABLE_NOTES, new String[] {KEY_ROWID,
                         KEY_TEXT, KEY_DATE, KEY_TOPEMOIDX, KEY_TOPSCORE, KEY_ANALYZED},
-                null, null, null, null,  KEY_ROWID + " DESC", null);
+                null, null, null, null,  KEY_CALENDARMS + " DESC", null);
 
         if (cursor != null) {
             cursor.moveToFirst();
@@ -264,7 +264,7 @@ public class DbAdapter {
     }
 
     public Cursor fetchNotesByColumns(String[] columns) {
-        Cursor cursor = mDb.query(TABLE_NOTES, columns, null, null, null, null, null, null);
+        Cursor cursor = mDb.query(TABLE_NOTES, columns, null, null, null, null, KEY_CALENDARMS + " DESC", null);
 
         if (cursor != null) {
             cursor.moveToFirst();

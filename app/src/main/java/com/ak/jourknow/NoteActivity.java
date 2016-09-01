@@ -92,6 +92,25 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     static ToneAnalyzer mToneAnalyzer = new ToneAnalyzer(ToneAnalyzer.VERSION_DATE_2016_05_19);
     private BubbleChart mChart;
 
+    public static int[] jasdfColors = { //strong - moderate for each emotion
+            -10711, -3725,
+            -1571551, -24169,
+            -16224846, -9845790,
+            -10934652, -5801512,
+            -13476309, -8539560
+    } ;
+    /*Color.parseColor("#69C3E2")
+    <item>#FFD629</item>
+    <item>#FFF173</item>
+    <item>#E80521</item>
+    <item>#FFA197</item>
+    <item>#086DB2</item>
+    <item>#69C3E2</item>
+    <item>#592684</item>
+    <item>#A779D8</item>
+    <item>#325E2B</item>
+    <item>#7DB258</item>
+*/
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -112,7 +131,6 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mColoredText = ((TextView) findViewById(R.id.coloredText));
         mNoteData = new NoteData();
         mTextChanged = false;
-        mEditText.addTextChangedListener(textWatcher);
 
         requestRecordPermission();
 
@@ -181,6 +199,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             mNoteData.wordCnt = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_WORDCNT));
             mNoteData.analyzed = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_ANALYZED)) > 0;
             mEditText.setText(mNoteData.text);
+            mEditText.addTextChangedListener(textWatcher);
 
             if(mNoteData.analyzed) {
                 mNoteData.analysisRaw = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_ANALYSISRAW));
@@ -329,8 +348,9 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             mDbHelper.insertNote(mNoteData);
         }
         else {
-            if (mTextChanged)
+            if (mTextChanged) {
                 mDbHelper.updateNote(mRowId, mNoteData);
+            }
         }
         mDbHelper.close();
     }
@@ -636,15 +656,14 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mChart.getXAxis().setDrawGridLines(false);
         mChart.getXAxis().setTextColor(getResources().getColor(R.color.colorPrimaryDark));
         mChart.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
-        mChart.getAxisLeft().setEnabled(false);
-        mChart.getAxisRight().setEnabled(false);
-        mChart.setDescription("");
-        //setBorderColor
         mChart.getXAxis().setAxisMinValue(-0.5f);
         mChart.getXAxis().setAxisMaxValue(5.5f);
-        mChart.setDrawBorders(true);
-        mChart.setBorderColor(getResources().getColor(R.color.colorPrimaryDark));
-
+        mChart.getAxisLeft().setEnabled(false);
+        mChart.getAxisRight().setEnabled(false);
+        mChart.setDescription(""); //title position is tricky
+        //setBorderColor
+        //mChart.setDrawBorders(true);
+        //mChart.setBorderColor(getResources().getColor(R.color.colorPrimaryDark));
 
         AxisValueFormatter xFormatter = new AxisValueFormatter() {
             @Override
@@ -684,7 +703,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         //        }
         mChart.setEnabled(true);
         BubbleDataSet set = new BubbleDataSet(vals, "");
-
+        set.setNormalizeSizeEnabled(false);
         set.setColors(colors);
         set.setDrawValues(false);
         dataSets.add(set);

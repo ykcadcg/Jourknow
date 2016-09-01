@@ -24,7 +24,18 @@
             "#E80521", "#FFA197",//anger
             "#086DB2", "#69C3E2",//sadness
             "#592684", "#A779D8", //disgust
-            "#325E2B", "#7DB258"//fear -->
+            "#325E2B", "#7DB258"//fear
+             <array name="jasdfColors">
+        <item>16766505</item>
+        <item>16773491</item>
+        <item>15205665</item>
+        <item>16753047</item>
+        <item>552370</item>
+        <item>6931426</item>
+        <item>5842564</item>
+        <item>10975704</item>
+        <item>3300907</item>
+        <item>8237656</item>-->
     <string-array name="jasdfColors">
         <item>#FFD629</item>
         <item>#FFF173</item>
@@ -40,4 +51,6 @@
     <string name="quotes">Quotes</string>
     <string name="delete">Delete</string>
     <string name="share">Share</string>
+    <string name="memoryBalls">Memory Balls</string>
+
 </resources>
