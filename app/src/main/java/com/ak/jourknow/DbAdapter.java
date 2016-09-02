@@ -263,8 +263,9 @@ public class DbAdapter {
         return cursor;
     }
 
-    public Cursor fetchNotesByColumns(String[] columns) {
-        Cursor cursor = mDb.query(TABLE_NOTES, columns, null, null, null, null, KEY_CALENDARMS + " DESC", null);
+    public Cursor fetchNotesByColumns(String[] columns, boolean Desc) {
+        String order = Desc ? " DESC" : " ASC";
+        Cursor cursor = mDb.query(TABLE_NOTES, columns, null, null, null, null, KEY_CALENDARMS + order, null);
 
         if (cursor != null) {
             cursor.moveToFirst();
@@ -280,4 +281,11 @@ public class DbAdapter {
         return cursor;
     }
 
+    public Cursor emotionalQuotesCnt() {
+        Cursor cursor = mDb.rawQuery("SELECT (" + KEY_TOPEMOIDX + "/2) emotion, count(*) cnt FROM " + TABLE_SENTENCES + " WHERE " + KEY_TOPSCORE + " >= " + NoteActivity.sentenceEmotionThreshold + " GROUP BY emotion", null);
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        return cursor;
+    }
 }

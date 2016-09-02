@@ -21,9 +21,11 @@ import com.github.mikephil.charting.data.PieDataSet;
 import com.github.mikephil.charting.data.PieEntry;
 import com.github.mikephil.charting.formatter.AxisValueFormatter;
 import com.github.mikephil.charting.formatter.PercentFormatter;
+import com.github.mikephil.charting.formatter.ValueFormatter;
 import com.github.mikephil.charting.interfaces.datasets.IBarDataSet;
 import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
+import com.github.mikephil.charting.utils.ViewPortHandler;
 
 import java.util.ArrayList;
 
@@ -31,8 +33,7 @@ public class ReportActivity extends AppCompatActivity {
 
     private DbAdapter dbHelper;
     private LineChart mChart1;
-    private PieChart mChart2;
-    private int mRowCnt;
+    private PieChart mChart2, mChart3;
     ArrayList<String> mXLables;
 
     @Override
@@ -48,8 +49,14 @@ public class ReportActivity extends AppCompatActivity {
 
     private void initCharts() {
         initChart1();
-        initChart2();
+
+        mChart2 = (PieChart) findViewById(R.id.chart2);
+        initChart(mChart2);
+
+        mChart3 = (PieChart) findViewById(R.id.chart3);
+        initChart(mChart3);
     }
+
 
     private void initChart1(){
         mChart1 = (LineChart) findViewById(R.id.chart1);
@@ -85,27 +92,27 @@ public class ReportActivity extends AppCompatActivity {
         mChart1.getXAxis().setValueFormatter(xFormatter);
     }
 
-    private void initChart2(){
-        mChart2 = (PieChart) findViewById(R.id.chart2);
-        mChart2.setRotationEnabled(true);
-        mChart2.setHighlightPerTapEnabled(true);
-        mChart2.setDescription("");
-        mChart2.setEntryLabelColor(getResources().getColor(R.color.colorPrimaryDark));
-        mChart2.setEntryLabelTextSize(12f);
-        mChart2.setTouchEnabled(true);
-        //mChart2.getLegend().setEnabled(true);
-        //mChart2.getLegend().setPosition(Legend.LegendPosition.ABOVE_CHART_CENTER);
+    private void initChart(PieChart chart) {
+        chart.setRotationEnabled(true);
+        chart.setHighlightPerTapEnabled(true);
+        chart.setDescription("");
+        chart.setEntryLabelColor(getResources().getColor(R.color.colorPrimaryDark));
+        chart.setEntryLabelTextSize(12f);
+        chart.setTouchEnabled(true);
+        //chart.getLegend().setEnabled(true);
+        //chart.getLegend().setPosition(Legend.LegendPosition.ABOVE_CHART_CENTER);
     }
-
+    
     private void updateCharts() {
         updateChart1();
         updateChart2();
+        updateChart3();
     }
 
     private boolean updateChart1(){
         String[] columns = new String[]{dbHelper.KEY_DATE, dbHelper.KEY_ANALYZED, dbHelper.KEY_JOY, dbHelper.KEY_ANGER, dbHelper.KEY_SADNESS, dbHelper.KEY_DISGUST, dbHelper.KEY_FEAR};
-        Cursor cursor = dbHelper.fetchNotesByColumns(columns);
-        if(cursor == null || (mRowCnt = cursor.getCount()) == 0)
+        Cursor cursor = dbHelper.fetchNotesByColumns(columns, false);
+        if(cursor == null || cursor.getCount() == 0)
             return false;
 
         mXLables = new ArrayList<>();
@@ -151,16 +158,59 @@ public class ReportActivity extends AppCompatActivity {
 
     private boolean updateChart2(){
         Cursor cursor = dbHelper.avgJasdf();
-        if(cursor == null || (mRowCnt = cursor.getCount()) == 0)
+        if(cursor == null || cursor.getCount() == 0)
             return false;
 
         ArrayList<PieEntry> entries = new ArrayList<PieEntry>();
         int[] colors = new int[5];
+
         for (int i = 0; i < 5; i++) {
             entries.add(new PieEntry(cursor.getFloat(i), getResources().getStringArray(R.array.emotions)[i]));
             colors[i] = Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[i * 2]);
         }
+
         PieDataSet dataSet = new PieDataSet(entries, "");
+        return configPieChart(mChart2, dataSet, colors);
+    }
+
+    private boolean updateChart3(){
+        Cursor cursor = dbHelper.emotionalQuotesCnt();
+        if(cursor == null || cursor.getCount() == 0)
+            return false;
+
+        ArrayList<PieEntry> entries = new ArrayList<PieEntry>();
+        int[] colors = new int[5];
+
+        int entryId = 0;
+        do{
+            int emotion = cursor.getInt(cursor.getColumnIndexOrThrow("emotion"));
+            int cnt = cursor.getInt(cursor.getColumnIndexOrThrow("cnt"));
+            entries.add(new PieEntry(cnt, getResources().getStringArray(R.array.emotions)[emotion]));
+            
+            colors[entryId] = Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[emotion * 2]);
+
+            entryId++;
+        }
+        while (cursor.moveToNext());
+
+
+        PieDataSet dataSet = new PieDataSet(entries, "");
+        //chart3's formatter
+        ValueFormatter intFormatter = new ValueFormatter () {
+            @Override
+            public String getFormattedValue(float value, Entry e, int i, ViewPortHandler h) {
+                return "" + ((int) value);
+            }
+        };
+        dataSet.setValueFormatter(intFormatter);
+
+        return configPieChart(mChart3, dataSet, colors);
+    }
+
+    private boolean configPieChart(PieChart chart, PieDataSet dataSet, int[] colors){
+        if(dataSet.getEntryCount() == 0)
+            return false;
+
         dataSet.setSliceSpace(3f);
         dataSet.setSelectionShift(5f);
         dataSet.setColors(colors);
@@ -169,9 +219,10 @@ public class ReportActivity extends AppCompatActivity {
         //data.setValueFormatter(new PercentFormatter());
         data.setValueTextSize(11f);
         data.setValueTextColor(getResources().getColor(R.color.colorPrimaryDark));
-        mChart2.setData(data);
+        chart.setData(data);
 
-        mChart2.invalidate();
+        chart.invalidate();
         return true;
     }
+
 }
