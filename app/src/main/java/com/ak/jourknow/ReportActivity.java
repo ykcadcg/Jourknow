@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 
+import com.github.mikephil.charting.charts.BarChart;
 import com.github.mikephil.charting.charts.LineChart;
 import com.github.mikephil.charting.charts.PieChart;
 import com.github.mikephil.charting.components.AxisBase;
@@ -27,13 +28,15 @@ import com.github.mikephil.charting.interfaces.datasets.ILineDataSet;
 import com.github.mikephil.charting.utils.ColorTemplate;
 import com.github.mikephil.charting.utils.ViewPortHandler;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 public class ReportActivity extends AppCompatActivity {
 
     private DbAdapter dbHelper;
-    private LineChart mChart1;
-    private PieChart mChart2, mChart3;
+    private BarChart mChart1;
+    private PieChart mChart2, mChart3, mChart4;
     ArrayList<String> mXLables;
 
     @Override
@@ -55,14 +58,19 @@ public class ReportActivity extends AppCompatActivity {
 
         mChart3 = (PieChart) findViewById(R.id.chart3);
         initChart(mChart3);
+
+        mChart4 = (PieChart) findViewById(R.id.chart4);
+        initChart(mChart4);
     }
 
 
     private void initChart1(){
-        mChart1 = (LineChart) findViewById(R.id.chart1);
+        mChart1 = (BarChart) findViewById(R.id.chart1);
         mChart1.setDrawGridBackground(false);
         mChart1.setDescription(getString(R.string.emotionNumberDescription));
+        mChart1.setDescriptionTextSize(14f);
         mChart1.setDrawBorders(false);
+        mChart1.setDrawBarShadow(false);
 
         mChart1.getAxisRight().setEnabled(false);
         mChart1.getAxisLeft().setDrawAxisLine(false);
@@ -107,49 +115,48 @@ public class ReportActivity extends AppCompatActivity {
         updateChart1();
         updateChart2();
         updateChart3();
+        updateChart4();
     }
 
     private boolean updateChart1(){
-        String[] columns = new String[]{dbHelper.KEY_DATE, dbHelper.KEY_ANALYZED, dbHelper.KEY_JOY, dbHelper.KEY_ANGER, dbHelper.KEY_SADNESS, dbHelper.KEY_DISGUST, dbHelper.KEY_FEAR};
+        String[] columns = new String[]{dbHelper.KEY_CALENDARMS, dbHelper.KEY_ANALYZED, dbHelper.KEY_JOY, dbHelper.KEY_ANGER, dbHelper.KEY_SADNESS, dbHelper.KEY_DISGUST, dbHelper.KEY_FEAR};
         Cursor cursor = dbHelper.fetchNotesByColumns(columns, false);
         if(cursor == null || cursor.getCount() == 0)
             return false;
 
         mXLables = new ArrayList<>();
-        ArrayList<ArrayList<Entry>> valueSets = new ArrayList<>();
+        ArrayList<ArrayList<BarEntry>> valueSets = new ArrayList<>();
         for (int emo = 0; emo < 5; emo++) {
-            valueSets.add(new ArrayList<Entry>());
+            valueSets.add(new ArrayList<BarEntry>());
         }
 
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("MM/dd");
         int entryId = 0;
         do{
             if(cursor.getInt(cursor.getColumnIndex(dbHelper.KEY_ANALYZED)) == 0) //not analyzed
                 continue;
-            String date = cursor.getString(cursor.getColumnIndex(dbHelper.KEY_DATE));
+
+            long calendarMs = cursor.getLong(cursor.getColumnIndexOrThrow(DbAdapter.KEY_CALENDARMS));
+            String date = dateFormatter.format(new Date(calendarMs));
             mXLables.add(date);
             for (int emo = 0; emo < 5; emo++) {
                 float score = cursor.getFloat(cursor.getColumnIndex(columns[emo + 2])); //from KEY_JOY
-                valueSets.get(emo).add(new Entry(entryId, score));
+                valueSets.get(emo).add(new BarEntry(entryId, score));
             }
             entryId++;
         }
         while (cursor.moveToNext());
 
-        ArrayList<ILineDataSet> dataSets = new ArrayList<ILineDataSet>();
+        ArrayList<IBarDataSet> dataSets = new ArrayList<>();
         for (int emo = 0; emo < 5; emo++) {
-            LineDataSet d = new LineDataSet(valueSets.get(emo), getResources().getStringArray(R.array.emotions)[emo]);
-            d.setLineWidth(2.5f);
-            d.setCircleRadius(4f);
+            BarDataSet d = new BarDataSet(valueSets.get(emo), getResources().getStringArray(R.array.emotions)[emo]);
             int color = Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[emo * 2]);
             d.setColor(color);
-            d.setCircleColor(color);
             d.setDrawValues(false);
-            if(emo == 0)
-                d.setDrawFilled(true);
             dataSets.add(d);
         }
 
-        LineData data = new LineData(dataSets);
+        BarData data = new BarData(dataSets);
         mChart1.setData(data);
         //mChart1.animateX(200);
         mChart1.invalidate();
@@ -171,6 +178,23 @@ public class ReportActivity extends AppCompatActivity {
 
         PieDataSet dataSet = new PieDataSet(entries, "");
         return configPieChart(mChart2, dataSet, colors);
+    }
+
+    private boolean updateChart4(){
+        Cursor cursor = dbHelper.totalJasdf();
+        if(cursor == null || cursor.getCount() == 0)
+            return false;
+
+        ArrayList<PieEntry> entries = new ArrayList<PieEntry>();
+        int[] colors = new int[5];
+
+        for (int i = 0; i < 5; i++) {
+            entries.add(new PieEntry(cursor.getFloat(i), getResources().getStringArray(R.array.emotions)[i]));
+            colors[i] = Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[i * 2]);
+        }
+
+        PieDataSet dataSet = new PieDataSet(entries, "");
+        return configPieChart(mChart4, dataSet, colors);
     }
 
     private boolean updateChart3(){

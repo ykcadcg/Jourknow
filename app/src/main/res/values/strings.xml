@@ -48,13 +48,19 @@
         <item>#325E2B</item>
         <item>#7DB258</item>
     </string-array>
-    <string name="topEmotionalQuotes">Top Emotional Quotes</string>
+    <string name="topQuotes">Quotes</string>
     <string name="delete">Delete</string>
     <string name="share">Share</string>
     <string name="emotionBalls">Emotion Balls</string>
-    <string name="emotionTrends">Emotion Trends</string>
-    <string name="typicalEmotions">Typical Emotions</string>
-    <string name="emotionalQuotes">Emotional Quotes</string>
+    <string name="myAverage">My Average</string>
+    <string name="trend">Trend</string>
+    <string name="quoteCounts">Quote Counts</string>
     <string name="emotionNumberDescription">(>0.5: moderate, >0.75: strong)</string>
+    <string name="influenceFactors">Influence Factors</string>
+    <string name="influenceDesc">Time of the day:\n Day of the week:\n Date of the month:\n Location:\n Weather:\n </string>
+    <string name="comments">Comments</string>
+    <string name="emotionalQuotes">Emotional Quotes</string>
+    <string name="emotionBank">Emotion Bank</string>
+    <string name="reflection">Reflection</string>
 
 </resources>

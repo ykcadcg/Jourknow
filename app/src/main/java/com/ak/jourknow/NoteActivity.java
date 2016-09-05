@@ -73,7 +73,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private RecognizerDialog mIatDialog;
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
     private Toast mToast;
-    private EditText mEditText;
+    private EditText mEditText, mEditReflection;
     private TextView mColoredText;
     private final boolean mIsShowDialog = true;
     private String mLanguage = "en_us"; //en_us, mandarin
@@ -129,6 +129,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         //mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         mEditText = ((EditText) findViewById(R.id.iat_text));
         mColoredText = ((TextView) findViewById(R.id.coloredText));
+        mEditReflection = ((EditText) findViewById(R.id.textReflection));
         mNoteData = new NoteData();
         mTextChanged = false;
 
@@ -196,10 +197,13 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
         if(cursor != null) {
             mNoteData.text = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_TEXT));
+            mNoteData.reflection = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_REFLECTION));
             mNoteData.wordCnt = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_WORDCNT));
             mNoteData.analyzed = cursor.getInt(cursor.getColumnIndex(mDbHelper.KEY_ANALYZED)) > 0;
             mEditText.setText(mNoteData.text);
             mEditText.addTextChangedListener(textWatcher);
+            mEditReflection.setText(mNoteData.reflection);
+            mEditReflection.addTextChangedListener(textWatcher);
 
             if(mNoteData.analyzed) {
                 mNoteData.analysisRaw = cursor.getString(cursor.getColumnIndex(mDbHelper.KEY_ANALYSISRAW));
@@ -342,6 +346,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         if(mEditText.getText().length() <= 0)
             return;
         mNoteData.text = mEditText.getText().toString();
+        mNoteData.reflection = mEditReflection.getText().toString();
         mNoteData.wordCnt = mEditText.getText().toString().split("\\s+").length;
         mDbHelper.open();
         if(mRowId == -1) {
@@ -546,6 +551,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         String text;
         int wordCnt;
         boolean analyzed;
+        String reflection;
 
         String analysisRaw;
         float[] jasdf = {-1f, -1f, -1f, -1f, -1f}; //scores: joy, anger, sadness, disgust, fear   //{.9f, .8f, .7f, .6f, .5f};//
@@ -558,6 +564,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             sentences = new ArrayList<>();
             analysisRaw = null;
             analyzed = false;
+            reflection = null;
         }
 
         void Analyze(String text){

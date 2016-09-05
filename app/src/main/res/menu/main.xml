@@ -5,15 +5,21 @@
     android:title="@string/reports"
     android:orderInCategory="100"
     android:icon="@drawable/ic_timeline_white_24px"
-    app:showAsAction="ifRoom" />
+    app:showAsAction="always" />
     <item android:id="@+id/action_quotes"
-        android:title="@string/topEmotionalQuotes"
+        android:title="@string/topQuotes"
         android:orderInCategory="200"
         android:icon="@drawable/ic_format_quote_white_24px"
-        app:showAsAction="ifRoom" />
+        app:showAsAction="always" />
+    <item android:id="@+id/action_discuss"
+        android:title="Discuss"
+        android:orderInCategory="250"
+        android:icon="@drawable/ic_group_white_24px"
+        app:showAsAction="always" />
     <item
         android:id="@+id/action_settings"
         android:orderInCategory="300"
         android:title="@string/action_settings"
         app:showAsAction="never" />
+
 </menu>

@@ -2,6 +2,7 @@ package com.ak.jourknow;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.os.Bundle;
@@ -27,6 +28,10 @@ import android.widget.TextView;
 
 import org.w3c.dom.Text;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+import java.util.Date;
+
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
 
@@ -34,7 +39,7 @@ public class MainActivity extends AppCompatActivity
     private BkgdCursorAdapter customAdapter;
     private ListView listView;
     public final static String EXTRA_ID = "com.ak.jourknow.id";
-
+    public final static String packageName = "com.ak.jourknow";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -134,6 +139,10 @@ public class MainActivity extends AppCompatActivity
     protected void onResume() {
         dbHelper = new DbAdapter(this);
         dbHelper.open();
+//        if (prefs.getBoolean("firstrun", true)) {
+//            //loadSampleNotes();
+//            prefs.edit().putBoolean("firstrun", false).commit();
+//        }
         displayListView();
 
         super.onResume();
@@ -181,11 +190,12 @@ public class MainActivity extends AppCompatActivity
             super(context, cursor, flags);
             cursorInflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
         }
+        SimpleDateFormat dateFormatter = new SimpleDateFormat("MM/dd");
 
         public void bindView(View view, Context context, Cursor c) {
             TextView tvDate = (TextView)view.findViewById(R.id.textViewDate);
-            tvDate.setText(c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_DATE)));
-
+            long calendarMs = c.getLong(c.getColumnIndexOrThrow(DbAdapter.KEY_CALENDARMS));
+            tvDate.setText(dateFormatter.format(new Date(calendarMs)));
             TextView tvSnippet = (TextView)view.findViewById(R.id.textViewSnippet);
             tvSnippet.setText(c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_TEXT)));
             boolean analyzed = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_ANALYZED)) > 0;

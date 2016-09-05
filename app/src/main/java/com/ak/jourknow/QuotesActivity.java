@@ -13,8 +13,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.RadioButton;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 public class QuotesActivity extends AppCompatActivity {
@@ -79,20 +81,34 @@ public class QuotesActivity extends AppCompatActivity {
                     | ((((( a & MASK2 ) * f1 ) + ( ( b & MASK2 ) * f2 )) >> 8 ) & MASK2 );
         }
         public void bindView(View view, Context context, Cursor c) {
-            TextView tvQuote = (TextView)view.findViewById(R.id.quote);
-            int emotionIdx = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPEMOIDX));
             float score = c.getFloat(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPSCORE));
+            TextView tvScore = (TextView)view.findViewById(R.id.textViewScore);
+            tvScore.setText(String.format("%.1f", score));
+
+            TextView textViewArrow = (TextView)view.findViewById(R.id.textViewArrow);
+            RelativeLayout parentLayout = (RelativeLayout) view.findViewById(R.id.layout);
+
+            int emotionIdx = c.getInt(c.getColumnIndexOrThrow(DbAdapter.KEY_TOPEMOIDX));
+            TextView tvQuote = (TextView)view.findViewById(R.id.quote);
             if((score >= NoteActivity.sentenceEmotionThreshold) && (emotionIdx / 2 == mEmotionSelected)) {
+                parentLayout.setVisibility(View.VISIBLE);
                 tvQuote.setVisibility(View.VISIBLE);
+                tvScore.setVisibility(View.VISIBLE);
+                textViewArrow.setVisibility(View.VISIBLE);
+
                 tvQuote.setText("\"" + c.getString(c.getColumnIndexOrThrow(DbAdapter.KEY_TEXT)) + "\"");
-                //tvQuote.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[emotionIdx]));
+
                 int strong = NoteActivity.jasdfColors[mEmotionSelected * 2];
                 int moderate = NoteActivity.jasdfColors[mEmotionSelected * 2 + 1];
                 int color = interpolateColorsCompact(moderate, strong, (score - NoteActivity.sentenceEmotionThreshold) / (1.f- NoteActivity.sentenceEmotionThreshold));
-                tvQuote.setBackgroundColor(0xff000000 + color);
+                parentLayout.setBackgroundColor(0xff000000 + color);
             }
             else{
+                parentLayout.setVisibility(View.GONE);
                 tvQuote.setVisibility(View.GONE);
+                tvScore.setVisibility(View.GONE);
+                textViewArrow.setVisibility(View.GONE);
+
             }
         }
         public View newView(Context context, Cursor cursor, ViewGroup parent) {
@@ -116,11 +132,11 @@ public class QuotesActivity extends AppCompatActivity {
                 break;
             case R.id.fear:
                 mEmotionSelected = 4;
-                break;
+            break;
             default:
                 break;
         }
-        //listView.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[mEmotionSelected * 2 + 1]));
+        //listView.setBackgroundColor(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[mEmotionSelected * 2]));
         listView.invalidateViews();
     }
 

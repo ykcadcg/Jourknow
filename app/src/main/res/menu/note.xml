@@ -9,7 +9,7 @@
             app:showAsAction="ifRoom" />
     <item android:id="@+id/action_note_share"
         android:title="@string/share"
-        android:icon="@android:drawable/ic_menu_share"
+        android:icon="@drawable/ic_group_white_24px"
         android:orderInCategory="200"
         app:showAsAction="ifRoom" />
 </menu>

@@ -27,20 +27,31 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/emotionTrends"
+                android:text="@string/trend"
                 android:id="@+id/textView1"
                 android:layout_gravity="center_horizontal"
                 android:textColor="@color/colorPrimaryDark"
                 android:paddingTop="20dp" />
-            <com.github.mikephil.charting.charts.LineChart
+            <com.github.mikephil.charting.charts.BarChart
                 android:id="@+id/chart1"
                 android:layout_width="match_parent"
                 android:layout_height="250dp" />
-
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/typicalEmotions"
+                android:text="@string/emotionBank"
+                android:id="@+id/textViewTotal"
+                android:layout_gravity="center_horizontal"
+                android:textColor="@color/colorPrimaryDark"
+                android:paddingTop="20dp" />
+            <com.github.mikephil.charting.charts.PieChart
+                android:id="@+id/chart4"
+                android:layout_width="match_parent"
+                android:layout_height="250dp" />
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/myAverage"
                 android:id="@+id/textView2"
                 android:layout_gravity="center_horizontal"
                 android:textColor="@color/colorPrimaryDark"
@@ -50,11 +61,23 @@
                 android:layout_width="match_parent"
                 android:layout_height="250dp" />
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="National Average"
+                android:id="@+id/textView4"
+                android:layout_gravity="center_horizontal"
+                android:textColor="@color/colorPrimaryDark"
+                android:paddingTop="20dp" />
+            <com.github.mikephil.charting.charts.PieChart
+                android:id="@+id/chartNationalAvg"
+                android:layout_width="match_parent"
+                android:layout_height="250dp" />
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/emotionalQuotes"
+                android:text="@string/quoteCounts"
                 android:id="@+id/textView3"
                 android:layout_gravity="center_horizontal"
                 android:textColor="@color/colorPrimaryDark"
@@ -64,6 +87,22 @@
                 android:layout_width="match_parent"
                 android:layout_height="250dp" />
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/influenceFactors"
+                android:id="@+id/textView5"
+                android:layout_gravity="center_horizontal"
+                android:textColor="@color/colorPrimaryDark"
+                android:paddingTop="20dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/influenceDesc"
+                android:layout_gravity="left"
+                android:textColor="@color/colorPrimaryDark"
+                android:id="@+id/textView6" />
         </LinearLayout>
     </ScrollView>
 

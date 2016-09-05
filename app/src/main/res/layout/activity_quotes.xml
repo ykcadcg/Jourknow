@@ -7,6 +7,7 @@
     android:paddingLeft="0dp"
     android:paddingRight="0dp"
     android:paddingTop="0dp"
+    android:id="@+id/activity_quotes"
     tools:context="com.ak.jourknow.QuotesActivity">
 
     <LinearLayout
@@ -80,8 +81,26 @@
         android:layout_alignParentLeft="true"
         android:layout_alignParentStart="true"
         android:layout_below="@+id/linearLayout"
-        android:dividerHeight="1dp" />
+        android:layout_above="@+id/textViewActionPlan"
+        android:divider="@android:color/transparent"
+        android:dividerHeight="0dp" />   <!-- if want to completely remove divider line: add android:divider="@android:color/transparent" -->
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Action Plan"
+        android:id="@+id/textViewActionPlan"
+        android:layout_above="@+id/actionPlan"
+        android:layout_gravity="center_horizontal"
+        android:textColor="@color/colorPrimaryDark"
+        android:paddingTop="20dp"
+        android:layout_centerHorizontal="true" />
+    <EditText
+        android:id="@+id/actionPlan"
+        android:layout_alignParentBottom="true"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:gravity="top|start"/>
 
 
-    <!-- if want to completely remove divider line: add android:divider="@android:color/transparent" -->
 </RelativeLayout>

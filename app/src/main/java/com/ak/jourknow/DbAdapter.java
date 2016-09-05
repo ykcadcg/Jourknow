@@ -8,16 +8,21 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Calendar;
 
 /**
  * Created by kyang on 6/28/2016. based on http://www.mysamplecode.com/2012/07/android-listview-cursoradapter-sqlite.html
  */
 public class DbAdapter {
+    public final static boolean firstRunAttachDB = true;
+
     //Notes table
     public static final String KEY_ROWID        = "_id";
     public static final String KEY_CALENDARMS   = "calendarMs";
-    public static final String KEY_DATE         = "date";
     public static final String KEY_WORDCNT      = "wordCnt";
     public static final String KEY_TEXT         = "text";
     public static final String KEY_ANALYSISRAW  = "analysisRaw";
@@ -29,6 +34,11 @@ public class DbAdapter {
     public static final String KEY_TOPEMOIDX    = "topEmotionIdx";
     public static final String KEY_TOPSCORE     = "topScore";
     public static final String KEY_ANALYZED     = "analyzed";
+    public static final String KEY_REFLECTION     = "reflection";
+    public static final String KEY_1            = "reserved1"; //reserved
+    public static final String KEY_2            = "reserved2";
+    public static final String KEY_3            = "reserved3";
+    public static final String KEY_4            = "reserved4";
 
     //Sentences table
     public static final String KEY_NOTEID   = "noteId";
@@ -36,12 +46,12 @@ public class DbAdapter {
     public static final String KEY_INPUTFROM   = "inputFrom";
     public static final String KEY_INPUTTO   = "inputTo";
 
-
     private static final String TAG = "DbAdapter";
     private DatabaseHelper mDbHelper;
     private SQLiteDatabase mDb;
 
-    private static final String DATABASE_NAME = "Jourknow";
+    private static String DB_PATH = "/data/data/" + MainActivity.packageName + "/databases/";
+    private static final String DATABASE_NAME = "Jourknow.db";
     private static final String TABLE_NOTES = "Notes";
     private static final String TABLE_SENTENCES = "Sentences";
     private static final int DATABASE_VERSION = 1;
@@ -52,7 +62,6 @@ public class DbAdapter {
             "CREATE TABLE if not exists " + TABLE_NOTES + " (" +
                     KEY_ROWID + " integer PRIMARY KEY autoincrement," +
                     KEY_CALENDARMS + "," +
-                    KEY_DATE + "," +
                     KEY_WORDCNT + "," +
                     KEY_TEXT + "," +
                     KEY_ANALYZED + "," +
@@ -64,6 +73,11 @@ public class DbAdapter {
                     KEY_FEAR + "," +
                     KEY_TOPEMOIDX + "," +
                     KEY_TOPSCORE + "," +
+                    KEY_REFLECTION + "," +
+                    KEY_1 + "," +
+                    KEY_2 + "," +
+                    KEY_3 + "," +
+                    KEY_4 + "," +
     " UNIQUE (" + KEY_CALENDARMS +"));";
 
     //multiple tables: learned from http://www.androidhive.info/2013/09/android-sqlite-database-with-multiple-tables/
@@ -77,6 +91,10 @@ public class DbAdapter {
                     KEY_TEXT + "," +
                     KEY_INPUTFROM + "," +
                     KEY_INPUTTO + "," +
+                    KEY_1 + "," +
+                    KEY_2 + "," +
+                    KEY_3 + "," +
+                    KEY_4 + "," +
                     "FOREIGN KEY(" + KEY_NOTEID + ") REFERENCES " + TABLE_NOTES + " (" + KEY_ROWID + "));"
             ;
 
@@ -89,8 +107,10 @@ public class DbAdapter {
         @Override
         public void onCreate(SQLiteDatabase db) {
             ;//Log.w(TAG, DATABASE_CREATE);
-            db.execSQL(CREATE_TABLE_NOTES);
-            db.execSQL(CREATE_TABLE_SENTENCES);
+            if(!firstRunAttachDB) {
+                db.execSQL(CREATE_TABLE_NOTES);
+                db.execSQL(CREATE_TABLE_SENTENCES);
+            }
         }
 
         @Override
@@ -116,9 +136,37 @@ public class DbAdapter {
     }
 
     public DbAdapter open() throws SQLException {
+        attachDBIfNotExist();
         mDbHelper = new DatabaseHelper(mCtx);
         mDb = mDbHelper.getWritableDatabase();
         return this;
+    }
+
+    void attachDBIfNotExist(){
+        if(!firstRunAttachDB)
+            return;
+
+        String dbPathName = DB_PATH + DATABASE_NAME;
+        if(!(new File(dbPathName)).exists()) { //DB not exists
+            try {
+                File f = new File(DB_PATH);
+                if (!f.exists()) {
+                    f.mkdir();
+                }
+                InputStream myInput = mCtx.getAssets().open(DATABASE_NAME);
+                OutputStream myOutput = new FileOutputStream(dbPathName);
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = myInput.read(buffer)) > 0) {
+                    myOutput.write(buffer, 0, length);
+                }
+                myOutput.flush();
+                myOutput.close();
+                myInput.close();
+            } catch (Exception e) {
+                throw new Error("Unable to create database");
+            }
+        }
     }
 
     public void close() {
@@ -136,10 +184,10 @@ public class DbAdapter {
     public long insertNote(NoteActivity.NoteData a) {
         ContentValues args = new ContentValues();
         args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
-        args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
         args.put(KEY_WORDCNT      , a.wordCnt);
         args.put(KEY_TEXT         , a.text);
         args.put(KEY_ANALYZED     , a.analyzed);
+        args.put(KEY_REFLECTION     , a.reflection);
         if(a.analyzed) {
             args.put(KEY_ANALYSISRAW, a.analysisRaw);
             args.put(KEY_JOY, a.jasdf[0]);
@@ -187,10 +235,10 @@ public class DbAdapter {
     public boolean updateNote(long _id, NoteActivity.NoteData a) {
         ContentValues args = new ContentValues();
         args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
-        args.put(KEY_DATE         , Integer.toString((a.time.get(Calendar.MONTH) + 1)) + "/" + a.time.get(Calendar.DAY_OF_MONTH));
         args.put(KEY_WORDCNT       , a.wordCnt);
         args.put(KEY_TEXT       , a.text);
         args.put(KEY_ANALYZED     , a.analyzed);
+        args.put(KEY_REFLECTION     , a.reflection);
         if(a.analyzed) {
             args.put(KEY_ANALYSISRAW, a.analysisRaw);
             args.put(KEY_JOY, a.jasdf[0]);
@@ -253,8 +301,8 @@ public class DbAdapter {
     }
 
     public Cursor fetchNotesList() {
-        Cursor cursor = mDb.query(TABLE_NOTES, new String[] {KEY_ROWID,
-                        KEY_TEXT, KEY_DATE, KEY_TOPEMOIDX, KEY_TOPSCORE, KEY_ANALYZED},
+        Cursor cursor = mDb.query(TABLE_NOTES, new String[] {KEY_ROWID, KEY_CALENDARMS,
+                        KEY_TEXT, KEY_TOPEMOIDX, KEY_TOPSCORE, KEY_ANALYZED},
                 null, null, null, null,  KEY_CALENDARMS + " DESC", null);
 
         if (cursor != null) {
@@ -281,6 +329,14 @@ public class DbAdapter {
         return cursor;
     }
 
+    public Cursor totalJasdf() {
+        Cursor cursor = mDb.rawQuery("SELECT SUM(joy), SUM(anger), SUM(sadness), SUM(disgust), SUM(fear) FROM " + TABLE_NOTES, null);
+        if (cursor != null) {
+            cursor.moveToFirst();
+        }
+        return cursor;
+    }
+
     public Cursor emotionalQuotesCnt() {
         Cursor cursor = mDb.rawQuery("SELECT (" + KEY_TOPEMOIDX + "/2) emotion, count(*) cnt FROM " + TABLE_SENTENCES + " WHERE " + KEY_TOPSCORE + " >= " + NoteActivity.sentenceEmotionThreshold + " GROUP BY emotion", null);
         if (cursor != null) {
@@ -288,4 +344,5 @@ public class DbAdapter {
         }
         return cursor;
     }
+
 }
