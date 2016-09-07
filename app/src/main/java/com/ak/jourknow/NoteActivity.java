@@ -128,7 +128,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         findViewById(R.id.analyze).setOnClickListener(NoteActivity.this);
         //mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         mEditText = ((EditText) findViewById(R.id.iat_text));
-        mColoredText = ((TextView) findViewById(R.id.coloredText));
+        //mColoredText = ((TextView) findViewById(R.id.coloredText));
         mEditReflection = ((EditText) findViewById(R.id.textReflection));
         mNoteData = new NoteData();
         mTextChanged = false;
@@ -242,7 +242,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mDbHelper.close();
 
         updateChart();
-        updateColoredText();
+        //updateColoredText();
     }
 
     public static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -299,7 +299,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
                 mNoteData.Analyze(mEditText.getText().toString());
                 updateChart();
-                updateColoredText();
+                //updateColoredText();
                 break;
 
             default:
@@ -655,11 +655,11 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mChart1 = (BubbleChart) findViewById(R.id.chart);
         //mChart1.setDescription("");
         mChart1.setDrawGridBackground(false);
-        mChart1.setTouchEnabled(true);
-        mChart1.setDragEnabled(true);
-        mChart1.setScaleEnabled(true);
+        mChart1.setTouchEnabled(false);
+//        mChart1.setDragEnabled(true);
+//        mChart1.setScaleEnabled(true);
+//        mChart1.setPinchZoom(true);
         mChart1.setMaxVisibleValueCount(5);
-        mChart1.setPinchZoom(true);
         mChart1.getXAxis().setDrawGridLines(false);
         mChart1.getXAxis().setTextColor(getResources().getColor(R.color.colorPrimaryDark));
         mChart1.getXAxis().setPosition(XAxis.XAxisPosition.BOTTOM);
@@ -726,19 +726,19 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mChart1.invalidate();
     }
 
-    private void updateColoredText(){
-        if((!mNoteData.analyzed) || (mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
-            return;
-        //spannable: see http://blog.csdn.net/harvic880925/article/details/38984705
-        SpannableStringBuilder spanText = new SpannableStringBuilder(mNoteData.text);
-
-        for(sentenceEmotion sen : mNoteData.sentences){
-            if((sen.topScore >= sentenceEmotionThreshold) && (sen.topEmotionIdx >= 0)) {
-                //you can only use a span once, so i had to set another span, even if it has the same value. http://stackoverflow.com/questions/25049913/setspan-multiple-times
-                BackgroundColorSpan span = new BackgroundColorSpan(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[sen.topEmotionIdx]));
-                spanText.setSpan(span, sen.input_from, sen.input_to, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-            }
-        }
-        mColoredText.setText(spanText);
-    }
+//    private void updateColoredText(){
+//        if((!mNoteData.analyzed) || (mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
+//            return;
+//        //spannable: see http://blog.csdn.net/harvic880925/article/details/38984705
+//        SpannableStringBuilder spanText = new SpannableStringBuilder(mNoteData.text);
+//
+//        for(sentenceEmotion sen : mNoteData.sentences){
+//            if((sen.topScore >= sentenceEmotionThreshold) && (sen.topEmotionIdx >= 0)) {
+//                //you can only use a span once, so i had to set another span, even if it has the same value. http://stackoverflow.com/questions/25049913/setspan-multiple-times
+//                BackgroundColorSpan span = new BackgroundColorSpan(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[sen.topEmotionIdx]));
+//                spanText.setSpan(span, sen.input_from, sen.input_to, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+//            }
+//        }
+//        mColoredText.setText(spanText);
+//    }
 }

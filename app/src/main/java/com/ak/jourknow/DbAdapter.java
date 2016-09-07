@@ -234,7 +234,7 @@ public class DbAdapter {
 
     public boolean updateNote(long _id, NoteActivity.NoteData a) {
         ContentValues args = new ContentValues();
-        args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
+        //args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
         args.put(KEY_WORDCNT       , a.wordCnt);
         args.put(KEY_TEXT       , a.text);
         args.put(KEY_ANALYZED     , a.analyzed);
