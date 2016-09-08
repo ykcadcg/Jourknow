@@ -290,9 +290,9 @@ public class DbAdapter {
         return cursor;
     }
 
-    public Cursor querySentencesByScore(float scoreThreshold) throws SQLException {
+    public Cursor querySentencesByScore(float scoreThreshold, int emotion) throws SQLException {
         Cursor cursor = mDb.query(TABLE_SENTENCES, null,
-                KEY_TOPSCORE + " >= " + scoreThreshold,
+                KEY_TOPSCORE + " >= " + scoreThreshold + " AND " + KEY_TOPEMOIDX + "/2 == " + emotion,
                 null, null, null, KEY_TOPSCORE + " DESC ", null);
         if (cursor != null) {
             cursor.moveToFirst();
