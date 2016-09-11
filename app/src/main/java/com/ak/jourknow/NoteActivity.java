@@ -1,10 +1,13 @@
 package com.ak.jourknow;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Environment;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -21,7 +24,9 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.animation.AnimationUtils;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -85,7 +90,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
     private int mRowId;
     private NoteData mNoteData;
     boolean recordGranted = false;
-    private boolean mTextChanged;
+    private boolean mNoteChanged;
     private ArrayList<String> mXLables;
 
     //AI
@@ -126,12 +131,12 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         //UI
         findViewById(R.id.speak).setOnClickListener(NoteActivity.this);
         findViewById(R.id.analyze).setOnClickListener(NoteActivity.this);
-        //mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
+        mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
         mEditText = ((EditText) findViewById(R.id.iat_text));
-        //mColoredText = ((TextView) findViewById(R.id.coloredText));
+        mColoredText = ((TextView) findViewById(R.id.coloredText));
         mEditReflection = ((EditText) findViewById(R.id.textReflection));
         mNoteData = new NoteData();
-        mTextChanged = false;
+        mNoteChanged = false;
 
         requestRecordPermission();
 
@@ -184,7 +189,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
     private TextWatcher textWatcher = new TextWatcher() {
         public void afterTextChanged(Editable s) {
-            mTextChanged = true;
+            mNoteChanged = true;
         }
         public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
         public void onTextChanged(CharSequence s, int start, int before, int count) {}
@@ -242,7 +247,7 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mDbHelper.close();
 
         updateChart();
-        //updateColoredText();
+        updateColoredText();
     }
 
     public static final int MY_PERMISSIONS_REQUEST_RECORD_AUDIO = 1;
@@ -296,10 +301,13 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
                 if (mEditText.getText().length() <= 0) {
                     break;
                 }
-
-                mNoteData.Analyze(mEditText.getText().toString());
+                ImageButton button = (ImageButton)findViewById(R.id.analyze);
+                button.startAnimation(AnimationUtils.loadAnimation(this, R.anim.analyze_click));
+                if(Analyze(mEditText.getText().toString())){
+                    mNoteChanged = true;
+                }
                 updateChart();
-                //updateColoredText();
+                updateColoredText();
                 break;
 
             default:
@@ -312,6 +320,10 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
 
         if (!recordGranted) {
             requestRecordPermission();
+            return;
+        }
+        if(!isConnected()){
+            showTip(getString(R.string.notConnected));
             return;
         }
 
@@ -333,6 +345,12 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         }
     }
 
+    public boolean isConnected() {
+        ConnectivityManager manager = (ConnectivityManager)getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = manager.getActiveNetworkInfo();
+        return (netInfo != null && netInfo.isConnectedOrConnecting());
+    }
+
     @Override
     public void onPause() {
         if(mIat.isListening())
@@ -351,10 +369,16 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mDbHelper.open();
         if(mRowId == -1) {
             mDbHelper.insertNote(mNoteData);
+            if(isConnected()) {
+                mDbHelper.insertNoteOnServer(mNoteData);
+            }
         }
         else {
-            if (mTextChanged) {
+            if (mNoteChanged) {
                 mDbHelper.updateNote(mRowId, mNoteData);
+//                if(isConnected()) {
+//                 //yk todo   mDbHelper.updateNoteOnServer(mRowId, mNoteData);
+//                }
             }
         }
         mDbHelper.close();
@@ -566,99 +590,113 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             analyzed = false;
             reflection = null;
         }
+    };
 
-        void Analyze(String text){
-            if(text.length() <= 0)
-                return;
-            mNoteData.text = text;
 
-            ToneOptions options = new ToneOptions.Builder().addTone(Tone.EMOTION).build();
-            ToneAnalysis tone = mToneAnalyzer.getTone(text, options).execute();
-            Log.v("analysis: ", tone.toString());
-            analysisRaw = tone.toString();
+    boolean Analyze(String text){
+        if(text.length() <= 0)
+            return false;
 
-            ToneCategory emotionTone = tone.getDocumentTone().getTones().get(0);
-            if(!emotionTone.getId().equalsIgnoreCase("emotion_tone")) {
-                Log.e("analysis: ", "Failed parsing emotion_tone");
-                return;
-            }
+        mNoteData.text = text;
+        if(!isConnected()){
+            showTip(getString(R.string.notConnected));
+            return false;
+        }
+        ToneOptions options = new ToneOptions.Builder().addTone(Tone.EMOTION).build();
+        ToneAnalysis tone = new ToneAnalysis();
+        try {
+            tone = mToneAnalyzer.getTone(text, options).execute();
+        }catch (Exception e){
+            Log.e(TAG, "Analyze: ", e);
+            showTip("Analysis failed");
+            return false;
+        }
+        Log.v("analysis: ", tone.toString());
+        mNoteData.analysisRaw = tone.toString();
 
-            mNoteData.analyzed = true;
-            List<ToneScore> toneScores = emotionTone.getTones();
-            float scoreMax = 0;
-            int idxMax = -1;
-            for (ToneScore s : toneScores) {
-                float score = s.getScore().floatValue();
-                int idx = emotionIdx(s.getId());
-                if(idx != -1){
-                    mNoteData.jasdf[idx] = score;
-                    if(score > scoreMax){
-                        scoreMax = score;
-                        idxMax = idx;
-                    }
-                }
-            }
-            //assign topEmoIdx only when idx is not -1 && score>=threshold
-            int topEmoIdx = -1;
-            if(idxMax != -1) {
-                topEmoIdx = idxMax * 2;
-                if (scoreMax < strongEmotionThreshold) { //moderate emotion
-                    topEmoIdx += 1;
-                }
-            }
-            mNoteData.topEmotionIdx = topEmoIdx;
-            mNoteData.topScore = scoreMax;
+        ToneCategory emotionTone = tone.getDocumentTone().getTones().get(0);
+        if(!emotionTone.getId().equalsIgnoreCase("emotion_tone")) {
+            Log.e("analysis: ", "Failed parsing emotion_tone");
+            return false;
+        }
 
-            //update emotional sentences
-            List<SentenceTone> sentenceTones = tone.getSentencesTone();
-            if(sentenceTones == null) //no emotion for this note - it happens
-                return;
-            mNoteData.sentences.clear();
-            for(SentenceTone t : sentenceTones){
-                if(t.getTones().size() <= 0) //no emotion for this sentence - it happens
-                    continue;
-                ToneCategory c = t.getTones().get(0);
-                if(!c.getId().equalsIgnoreCase("emotion_tone")) {
-                    Log.e("analysis: ", "Failed parsing emotion_tone for sentence " + t.getId());
-                    continue;
+        mNoteData.analyzed = true;
+        List<ToneScore> toneScores = emotionTone.getTones();
+        float scoreMax = 0;
+        int idxMax = -1;
+        for (ToneScore s : toneScores) {
+            float score = s.getScore().floatValue();
+            int idx = emotionIdx(s.getId());
+            if(idx != -1){
+                mNoteData.jasdf[idx] = score;
+                if(score > scoreMax){
+                    scoreMax = score;
+                    idxMax = idx;
                 }
-                List<ToneScore> scores = c.getTones();
-                //find max score that's >threshold
-                float scoreMaxS = 0;
-                int idxMaxS = -1;
-                for(ToneScore s: scores) {
-                    float score = s.getScore().floatValue();
-                    int idx = emotionIdx(s.getId());
-                    if (idx != -1){
-                        if (score > scoreMaxS) {
-                            scoreMaxS = score;
-                            idxMaxS = idx;
-                        }
-                    }
-                }
-                //assign topEmoIdx only when idxMaxS is not -1
-                int topEmoIdxS = -1;
-                if(idxMaxS != -1) {
-                    topEmoIdxS = idxMaxS * 2;
-                    if (scoreMaxS < strongEmotionThreshold) { //moderate emotion
-                        topEmoIdxS += 1;
-                    }
-                }
-                //if(maxScoreS > sentenceEmotionThreshold)
-                mNoteData.sentences.add(new sentenceEmotion(t.getId(), topEmoIdxS, scoreMaxS, t.getText(), t.getInputFrom(), t.getInputTo()));
             }
         }
-    };
+        //assign topEmoIdx only when idx is not -1 && score>=threshold
+        int topEmoIdx = -1;
+        if(idxMax != -1) {
+            topEmoIdx = idxMax * 2;
+            if (scoreMax < strongEmotionThreshold) { //moderate emotion
+                topEmoIdx += 1;
+            }
+        }
+        mNoteData.topEmotionIdx = topEmoIdx;
+        mNoteData.topScore = scoreMax;
+
+        //update emotional sentences
+        List<SentenceTone> sentenceTones = tone.getSentencesTone();
+        if(sentenceTones == null) //no emotion for this note - it happens
+            return true;
+        mNoteData.sentences.clear();
+        for(SentenceTone t : sentenceTones){
+            if(t.getTones().size() <= 0) //no emotion for this sentence - it happens
+                continue;
+            ToneCategory c = t.getTones().get(0);
+            if(!c.getId().equalsIgnoreCase("emotion_tone")) {
+                Log.e("analysis: ", "Failed parsing emotion_tone for sentence " + t.getId());
+                continue;
+            }
+            List<ToneScore> scores = c.getTones();
+            //find max score that's >threshold
+            float scoreMaxS = 0;
+            int idxMaxS = -1;
+            for(ToneScore s: scores) {
+                float score = s.getScore().floatValue();
+                int idx = emotionIdx(s.getId());
+                if (idx != -1){
+                    if (score > scoreMaxS) {
+                        scoreMaxS = score;
+                        idxMaxS = idx;
+                    }
+                }
+            }
+            //assign topEmoIdx only when idxMaxS is not -1
+            int topEmoIdxS = -1;
+            if(idxMaxS != -1) {
+                topEmoIdxS = idxMaxS * 2;
+                if (scoreMaxS < strongEmotionThreshold) { //moderate emotion
+                    topEmoIdxS += 1;
+                }
+            }
+            //if(maxScoreS > sentenceEmotionThreshold)
+            mNoteData.sentences.add(new sentenceEmotion(t.getId(), topEmoIdxS, scoreMaxS, t.getText(), t.getInputFrom(), t.getInputTo()));
+        }
+        return true;
+    }
 
     private void initChart(){
         //init
         mChart1 = (BubbleChart) findViewById(R.id.chart);
         //mChart1.setDescription("");
         mChart1.setDrawGridBackground(false);
-        mChart1.setTouchEnabled(false);
-//        mChart1.setDragEnabled(true);
-//        mChart1.setScaleEnabled(true);
-//        mChart1.setPinchZoom(true);
+        mChart1.setHighlightPerTapEnabled(true);
+        mChart1.setTouchEnabled(true);
+        mChart1.setDragEnabled(false);
+        mChart1.setScaleEnabled(false);
+        mChart1.setPinchZoom(false);
         mChart1.setMaxVisibleValueCount(5);
         mChart1.getXAxis().setDrawGridLines(false);
         mChart1.getXAxis().setTextColor(getResources().getColor(R.color.colorPrimaryDark));
@@ -726,19 +764,19 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mChart1.invalidate();
     }
 
-//    private void updateColoredText(){
-//        if((!mNoteData.analyzed) || (mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
-//            return;
-//        //spannable: see http://blog.csdn.net/harvic880925/article/details/38984705
-//        SpannableStringBuilder spanText = new SpannableStringBuilder(mNoteData.text);
-//
-//        for(sentenceEmotion sen : mNoteData.sentences){
-//            if((sen.topScore >= sentenceEmotionThreshold) && (sen.topEmotionIdx >= 0)) {
-//                //you can only use a span once, so i had to set another span, even if it has the same value. http://stackoverflow.com/questions/25049913/setspan-multiple-times
-//                BackgroundColorSpan span = new BackgroundColorSpan(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[sen.topEmotionIdx]));
-//                spanText.setSpan(span, sen.input_from, sen.input_to, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-//            }
-//        }
-//        mColoredText.setText(spanText);
-//    }
+    private void updateColoredText(){
+        if((!mNoteData.analyzed) || (mEditText.getText().length() <= 0) || (mNoteData.text == null) || (mNoteData.text.length() <= 0))
+            return;
+        //spannable: see http://blog.csdn.net/harvic880925/article/details/38984705
+        SpannableStringBuilder spanText = new SpannableStringBuilder(mNoteData.text);
+
+        for(sentenceEmotion sen : mNoteData.sentences){
+            if((sen.topScore >= sentenceEmotionThreshold) && (sen.topEmotionIdx >= 0)) {
+                //you can only use a span once, so i had to set another span, even if it has the same value. http://stackoverflow.com/questions/25049913/setspan-multiple-times
+                BackgroundColorSpan span = new BackgroundColorSpan(Color.parseColor(getResources().getStringArray(R.array.jasdfColors)[sen.topEmotionIdx]));
+                spanText.setSpan(span, sen.input_from, sen.input_to, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+        }
+        mColoredText.setText(spanText);
+    }
 }

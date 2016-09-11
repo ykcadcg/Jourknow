@@ -5,12 +5,19 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.StrictMode;
+import android.provider.Settings;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.CursorAdapter;
 import android.support.v4.widget.SimpleCursorAdapter;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.support.design.widget.NavigationView;
@@ -25,6 +32,13 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+import com.avos.avoscloud.AVException;
+import com.avos.avoscloud.AVOSCloud;
+import com.avos.avoscloud.AVObject;
+import com.avos.avoscloud.SaveCallback;
+import com.avos.avoscloud.feedback.FeedbackAgent;
 
 import org.w3c.dom.Text;
 
@@ -40,6 +54,7 @@ public class MainActivity extends AppCompatActivity
     private ListView listView;
     public final static String EXTRA_ID = "com.ak.jourknow.id";
     public final static String packageName = "com.ak.jourknow";
+    public String mAndroidId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,6 +79,21 @@ public class MainActivity extends AppCompatActivity
             StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
             StrictMode.setThreadPolicy(policy);
         }
+
+        AVOSCloud.initialize(this, "w1fcAvOcr0HliArshK92BCgP-9Nh9j0Va", "gQHn93R585cPzOXnaY6rzIY6");
+        //yk: not working yet: AVOSCloud.useAVCloudUS();
+//        // 测试 SDK 是否正常工作的代码
+//        AVObject testObject = new AVObject("TestObject");
+//        testObject.put("words","Hello US2 World!");
+//        testObject.saveInBackground(new SaveCallback() {
+//            @Override
+//            public void done(AVException e) {
+//                if(e == null){
+//                    Log.d("saved","success!");
+//                }
+//            }
+//        });
+        //mFeedbackAgent.sync();
     }
 
     public void newSession(View view) {
@@ -98,6 +128,40 @@ public class MainActivity extends AppCompatActivity
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
+        }
+        else if (id == R.id.action_share) {
+            Intent i1 = new Intent(android.content.Intent.ACTION_SEND);
+            i1.setType("text/plain");
+            i1.putExtra(android.content.Intent.EXTRA_SUBJECT, getResources().getString(R.string.recommendation_subject));
+            i1.putExtra(android.content.Intent.EXTRA_TEXT, getResources().getString(R.string.recommendation_body));
+            startActivity(Intent.createChooser(i1, getResources().getText(R.string.shareWith)));
+        }
+        else if (id == R.id.action_feedback) {
+            //below leancloud feedback form gives error
+//            FeedbackAgent agent = new FeedbackAgent(getApplicationContext());
+//            agent.startDefaultThreadActivity();
+            Intent Email = new Intent(Intent.ACTION_SEND);
+            Email.setType("message/rfc822");
+            Email.putExtra(Intent.EXTRA_EMAIL, new String[] { "jourknow@gmail.com" });
+            Email.putExtra(Intent.EXTRA_SUBJECT, "Feedback");
+            Email.putExtra(Intent.EXTRA_TEXT, "Dear Jourknow team, " + "");
+            try {
+                startActivity(Intent.createChooser(Email, "Send Feedback:"));
+            } catch (android.content.ActivityNotFoundException ex) {
+                Toast.makeText(this, "There are no email clients installed.", Toast.LENGTH_SHORT).show();
+            }
+        }
+        else if (id == R.id.action_follow) {
+            final Uri uri = Uri.parse("http://twitter.com/myJourknow");
+            final Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            if (getPackageManager().queryIntentActivities(intent, 0).size() > 0)
+            {
+                startActivity(intent);
+            }
+            else
+            {
+                Toast.makeText(this, "The device has no way to handle the url.", Toast.LENGTH_SHORT).show();
+            }
         }
         else if (id == R.id.action_report) {
             Intent intent = new Intent(this, ReportActivity.class);
@@ -213,4 +277,5 @@ public class MainActivity extends AppCompatActivity
             return cursorInflater.inflate(R.layout.listview_item, parent, false);
         }
     }
+
 }

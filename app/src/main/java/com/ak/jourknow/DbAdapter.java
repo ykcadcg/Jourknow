@@ -6,7 +6,14 @@ import android.database.Cursor;
 import android.database.SQLException;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.provider.Settings;
 import android.util.Log;
+
+import com.avos.avoscloud.AVException;
+import com.avos.avoscloud.AVObject;
+import com.avos.avoscloud.SaveCallback;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -19,6 +26,7 @@ import java.util.Calendar;
  */
 public class DbAdapter {
     public final static boolean firstRunAttachDB = true;
+    private String mAndroidId;
 
     //Notes table
     public static final String KEY_ROWID        = "_id";
@@ -45,6 +53,10 @@ public class DbAdapter {
     public static final String KEY_SENTENCEID   = "sentenceId";
     public static final String KEY_INPUTFROM   = "inputFrom";
     public static final String KEY_INPUTTO   = "inputTo";
+
+    //Server backend
+    public static final String KEY_ANDROIDID    = "androidId";
+
 
     private static final String TAG = "DbAdapter";
     private DatabaseHelper mDbHelper;
@@ -133,6 +145,7 @@ public class DbAdapter {
 
     public DbAdapter(Context ctx) {
         this.mCtx = ctx;
+        mAndroidId = Settings.Secure.getString(ctx.getContentResolver(), Settings.Secure.ANDROID_ID);
     }
 
     public DbAdapter open() throws SQLException {
@@ -206,8 +219,49 @@ public class DbAdapter {
                 insertSentence(noteId, s);
             }
         }
+
         return noteId;
     }
+
+    public boolean insertNoteOnServer(final NoteActivity.NoteData a) {
+        boolean ret = false;
+        final AVObject args = new AVObject(TABLE_NOTES);
+
+        args.put(KEY_ANDROIDID, mAndroidId);
+        args.put(KEY_CALENDARMS, a.time.getTimeInMillis());
+        args.put(KEY_WORDCNT      , a.wordCnt);
+        args.put(KEY_TEXT         , a.text);
+        args.put(KEY_ANALYZED     , a.analyzed);
+        args.put(KEY_REFLECTION     , a.reflection);
+        if(a.analyzed) {
+            args.put(KEY_ANALYSISRAW, a.analysisRaw);
+            args.put(KEY_JOY, a.jasdf[0]);
+            args.put(KEY_ANGER, a.jasdf[1]);
+            args.put(KEY_SADNESS, a.jasdf[2]);
+            args.put(KEY_DISGUST, a.jasdf[3]);
+            args.put(KEY_FEAR, a.jasdf[4]);
+            args.put(KEY_TOPEMOIDX, a.topEmotionIdx);
+            args.put(KEY_TOPSCORE, a.topScore);
+        }
+        args.saveInBackground(new SaveCallback() {
+            @Override
+            public void done(AVException e) {
+                if(e == null){
+                    String id = args.getObjectId();
+                    if (a.analyzed) {
+                        for (NoteActivity.sentenceEmotion s : a.sentences) {
+                            insertSentenceOnServer(id, s);
+                        }
+                    }
+                }
+                else{
+                    Log.e(TAG, "error: insertNoteOnServer", e);
+                }
+            }
+        });
+        return ret;
+    }
+
 
     private long insertSentence(long noteId, NoteActivity.sentenceEmotion a) {
         ContentValues args = new ContentValues();
@@ -222,6 +276,27 @@ public class DbAdapter {
         long sentenceId = mDb.insert(TABLE_SENTENCES, null, args);
         return sentenceId;
     }
+
+    private void insertSentenceOnServer(String noteId, NoteActivity.sentenceEmotion a) {
+        AVObject args = new AVObject(TABLE_SENTENCES);
+        args.put(KEY_NOTEID, noteId);
+        args.put(KEY_SENTENCEID, a.sentenceId);
+        args.put(KEY_TOPEMOIDX, a.topEmotionIdx);
+        args.put(KEY_TOPSCORE, a.topScore);
+        args.put(KEY_TEXT, a.text);
+        args.put(KEY_INPUTFROM, a.input_from);
+        args.put(KEY_INPUTTO, a.input_to);
+
+        args.saveInBackground(new SaveCallback() {
+            @Override
+            public void done(AVException e) {
+                if (e != null) {
+                    Log.e(TAG, "error: insertSentenceOnServer", e);
+                }
+            }
+        });
+    }
+
 
     private long deleteSentencesByNoteId(long noteId) {
         return mDb.delete(TABLE_SENTENCES, KEY_NOTEID + "=" + noteId, null);
@@ -257,6 +332,7 @@ public class DbAdapter {
         }
         return mDb.update(TABLE_NOTES, args, KEY_ROWID + "=" + _id, null) > 0;
     }
+
 
 /*
     public boolean deleteAllNotes() {

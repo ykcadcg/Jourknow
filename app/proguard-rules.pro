@@ -17,3 +17,64 @@
 #}
 -keep class com.iflytek.**{*;}
 -keep class com.github.mikephil.charting.** { *; }
+-keep class com.android.vending.billing.**
+-dontwarn com.ibm.watson.**
+-keep class com.ibm.watson.** { *;}
+
+
+-assumenosideeffects class android.util.Log {
+    public static *** d(...);
+    public static *** w(...);
+    public static *** v(...);
+    public static *** i(...);
+}
+-dontwarn java.awt.**
+
+#below is from leancloud https://leancloud.cn/docs/android_faq.html
+-dontwarn com.alibaba.fastjson.**
+-keep class com.alibaba.fastjson.** { *;}
+-dontwarn com.avos.**
+-keep class com.avos.** { *;}
+-dontwarn okio.**
+
+
+#other, making build much faster:
+-keepattributes Signature
+-dontwarn com.jcraft.jzlib.**
+-keep class com.jcraft.jzlib.**  { *;}
+
+-dontwarn sun.misc.**
+-keep class sun.misc.** { *;}
+
+-dontwarn sun.security.**
+-keep class sun.security.** { *; }
+
+-dontwarn com.google.**
+-keep class com.google.** { *;}
+
+-keep public class android.net.http.SslError
+-keep public class android.webkit.WebViewClient
+
+-dontwarn android.webkit.WebView
+-dontwarn android.net.http.SslError
+-dontwarn android.webkit.WebViewClient
+
+-dontwarn android.support.**
+
+-dontwarn org.apache.**
+-keep class org.apache.** { *;}
+
+-dontwarn org.jivesoftware.smack.**
+-keep class org.jivesoftware.smack.** { *;}
+
+-dontwarn com.loopj.**
+-keep class com.loopj.** { *;}
+
+-dontwarn okhttp3.**
+-keep class okhttp3.** { *; }
+-keep interface okhttp3.** { *; }
+
+-dontwarn org.xbill.**
+-keep class org.xbill.** { *;}
+
+-keepattributes *Annotation*

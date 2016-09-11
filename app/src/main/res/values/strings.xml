@@ -62,5 +62,11 @@
     <string name="emotionalQuotes">Emotional Quotes</string>
     <string name="emotionBank">Emotion Bank</string>
     <string name="reflection">Reflection</string>
+    <string name="notConnected">Device is not connected to internet. Please connect to internet and try again.</string>
+    <string name="feedback">Feedback</string>
+    <string name="recommendation_subject">Jourknow, my emotion assistant.</string>
+    <string name="recommendation_body">Voice journal to know myself. Analyze, track, improve my emotions. Get app at www.Jourknow.com. Follow www.twitter.com/myJourknow</string>
+    <string name="shareWith">Share with...</string>
+    <string name="followUs">Follow Us</string>
 
 </resources>
