@@ -178,11 +178,14 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
             startActivity(intent);
             return true;
         }else if (id == R.id.action_note_share){
-            //Intent i1 = new Intent(android.content.Intent.ACTION_SEND);
-            //i1.setType("text/html");
-            //i1.putExtra(android.content.Intent.EXTRA_SUBJECT, "Speech Master");
-            //i1.putExtra(android.content.Intent.EXTRA_TEXT, Html.fromHtml(scriptHtml + summaryHtml));
-            //startActivity(Intent.createChooser(i1, getResources().getText(R.string.shareWith)));
+            String text = mEditText.getText().toString();
+            if (text.length() > 0) {
+                Intent i1 = new Intent(android.content.Intent.ACTION_SEND);
+                i1.setType("text/plain");
+                i1.putExtra(android.content.Intent.EXTRA_SUBJECT, "Shared from my Jourknow");
+                i1.putExtra(android.content.Intent.EXTRA_TEXT, text);
+                startActivity(Intent.createChooser(i1, getResources().getText(R.string.shareWith)));
+            }
         }
         return super.onOptionsItemSelected(item);
     }
@@ -369,16 +372,10 @@ public class NoteActivity extends AppCompatActivity implements View.OnClickListe
         mDbHelper.open();
         if(mRowId == -1) {
             mDbHelper.insertNote(mNoteData);
-            if(isConnected()) {
-                mDbHelper.insertNoteOnServer(mNoteData);
-            }
         }
         else {
             if (mNoteChanged) {
                 mDbHelper.updateNote(mRowId, mNoteData);
-//                if(isConnected()) {
-//                 //yk todo   mDbHelper.updateNoteOnServer(mRowId, mNoteData);
-//                }
             }
         }
         mDbHelper.close();

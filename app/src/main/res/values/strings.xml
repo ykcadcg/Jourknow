@@ -4,8 +4,6 @@
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
 
-    <string name="action_settings">Settings</string>
-
     <string name="addSign">\u3009</string>
     <string name="journal">Journal</string>
 
@@ -68,5 +66,6 @@
     <string name="recommendation_body">Voice journal to know myself. Analyze, track, improve my emotions. Get app at www.Jourknow.com. Follow www.twitter.com/myJourknow</string>
     <string name="shareWith">Share with...</string>
     <string name="followUs">Follow Us</string>
+    <string name="rateUs">Rate Us</string>
 
 </resources>

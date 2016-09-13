@@ -30,6 +30,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -38,13 +39,16 @@ import com.avos.avoscloud.AVException;
 import com.avos.avoscloud.AVOSCloud;
 import com.avos.avoscloud.AVObject;
 import com.avos.avoscloud.SaveCallback;
+import com.avos.avoscloud.feedback.Comment;
 import com.avos.avoscloud.feedback.FeedbackAgent;
+import com.avos.avoscloud.feedback.FeedbackThread;
 
 import org.w3c.dom.Text;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener {
@@ -81,6 +85,8 @@ public class MainActivity extends AppCompatActivity
         }
 
         AVOSCloud.initialize(this, "w1fcAvOcr0HliArshK92BCgP-9Nh9j0Va", "gQHn93R585cPzOXnaY6rzIY6");
+        //AVOSCloud.initialize(this, "sl9sxfb9d9x0sc5g8c5wsv00f4nvztrgo5qcx4i4sjk1myn3", "ysz2l1zttl802m3qq8lvvqnmw8tnp4wiiuwe5xtydcjxrwtg"); //public
+
         //yk: not working yet: AVOSCloud.useAVCloudUS();
 //        // 测试 SDK 是否正常工作的代码
 //        AVObject testObject = new AVObject("TestObject");
@@ -124,19 +130,42 @@ public class MainActivity extends AppCompatActivity
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
+        takeAction(id);
+        return super.onOptionsItemSelected(item);
+    }
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
+    @SuppressWarnings("StatementWithEmptyBody")
+    @Override
+    public boolean onNavigationItemSelected(MenuItem item) {
+        // Handle navigation view item clicks here.
+        int id = item.getItemId();
+        takeAction(id);
+
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        drawer.closeDrawer(GravityCompat.START);
+        return true;
+    }
+
+    void takeAction(int id){
+        if (id == R.id.nav_report) {
+            Intent intent = new Intent(this, ReportActivity.class);
+            startActivity(intent);
         }
-        else if (id == R.id.action_share) {
+        else if (id == R.id.nav_quotes) {
+            Intent intent = new Intent(this, QuotesActivity.class);
+            startActivity(intent);
+        }
+        else if (id == R.id.nav_share) {
             Intent i1 = new Intent(android.content.Intent.ACTION_SEND);
             i1.setType("text/plain");
             i1.putExtra(android.content.Intent.EXTRA_SUBJECT, getResources().getString(R.string.recommendation_subject));
             i1.putExtra(android.content.Intent.EXTRA_TEXT, getResources().getString(R.string.recommendation_body));
             startActivity(Intent.createChooser(i1, getResources().getText(R.string.shareWith)));
         }
-        else if (id == R.id.action_feedback) {
+        else if (id == R.id.nav_send) {
+            FeedbackAgent agent = new FeedbackAgent(MainActivity.this);
+            agent.startDefaultThreadActivity();
+            /*
             //below leancloud feedback form gives error
 //            FeedbackAgent agent = new FeedbackAgent(getApplicationContext());
 //            agent.startDefaultThreadActivity();
@@ -149,9 +178,9 @@ public class MainActivity extends AppCompatActivity
                 startActivity(Intent.createChooser(Email, "Send Feedback:"));
             } catch (android.content.ActivityNotFoundException ex) {
                 Toast.makeText(this, "There are no email clients installed.", Toast.LENGTH_SHORT).show();
-            }
+            }*/
         }
-        else if (id == R.id.action_follow) {
+        else if (id == R.id.nav_follow) {
             final Uri uri = Uri.parse("http://twitter.com/myJourknow");
             final Intent intent = new Intent(Intent.ACTION_VIEW, uri);
             if (getPackageManager().queryIntentActivities(intent, 0).size() > 0)
@@ -163,40 +192,18 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(this, "The device has no way to handle the url.", Toast.LENGTH_SHORT).show();
             }
         }
-        else if (id == R.id.action_report) {
-            Intent intent = new Intent(this, ReportActivity.class);
-            startActivity(intent);
+        else if (id == R.id.nav_rate) {
+            final Uri uri = Uri.parse("market://details?id=" + getApplicationContext().getPackageName());
+            final Intent rateAppIntent = new Intent(Intent.ACTION_VIEW, uri);
+            if (getPackageManager().queryIntentActivities(rateAppIntent, 0).size() > 0)
+            {
+                startActivity(rateAppIntent);
+            }
+            else
+            {
+                Toast.makeText(this, "The device has no way to handle market urls.", Toast.LENGTH_SHORT).show();
+            }
         }
-        else if (id == R.id.action_quotes) {
-            Intent intent = new Intent(this, QuotesActivity.class);
-            startActivity(intent);
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @SuppressWarnings("StatementWithEmptyBody")
-    @Override
-    public boolean onNavigationItemSelected(MenuItem item) {
-        // Handle navigation view item clicks here.
-        int id = item.getItemId();
-/*
-        if (id == R.id.nav_camera) {
-            // Handle the camera action
-        } else if (id == R.id.nav_gallery) {
-
-        } else if (id == R.id.nav_slideshow) {
-
-        } else if (id == R.id.nav_manage) {
-
-        } else if (id == R.id.nav_share) {
-
-        } else if (id == R.id.nav_send) {
-
-        }
-*/
-        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
-        drawer.closeDrawer(GravityCompat.START);
-        return true;
     }
 
     @Override

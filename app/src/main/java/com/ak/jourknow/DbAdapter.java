@@ -11,8 +11,11 @@ import android.net.NetworkInfo;
 import android.provider.Settings;
 import android.util.Log;
 
+import com.avos.avoscloud.AVCloudQueryResult;
 import com.avos.avoscloud.AVException;
 import com.avos.avoscloud.AVObject;
+import com.avos.avoscloud.AVQuery;
+import com.avos.avoscloud.CloudQueryCallback;
 import com.avos.avoscloud.SaveCallback;
 
 import java.io.File;
@@ -56,6 +59,7 @@ public class DbAdapter {
 
     //Server backend
     public static final String KEY_ANDROIDID    = "androidId";
+    public static final String KEY_NOTEOBJECTID    = "noteObjectId";
 
 
     private static final String TAG = "DbAdapter";
@@ -194,6 +198,13 @@ public class DbAdapter {
         super.finalize();
     }
 
+
+    public boolean isConnected() {
+        ConnectivityManager manager = (ConnectivityManager)mCtx.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo netInfo = manager.getActiveNetworkInfo();
+        return (netInfo != null && netInfo.isConnectedOrConnecting());
+    }
+
     public long insertNote(NoteActivity.NoteData a) {
         ContentValues args = new ContentValues();
         args.put(KEY_CALENDARMS   , a.time.getTimeInMillis());
@@ -219,15 +230,19 @@ public class DbAdapter {
                 insertSentence(noteId, s);
             }
         }
-
+        if(isConnected() && noteId != -1) {
+            insertNoteOnServer(noteId, a);
+        }
         return noteId;
     }
 
-    public boolean insertNoteOnServer(final NoteActivity.NoteData a) {
+    public boolean insertNoteOnServer(final long noteId, final NoteActivity.NoteData a) {
         boolean ret = false;
         final AVObject args = new AVObject(TABLE_NOTES);
 
         args.put(KEY_ANDROIDID, mAndroidId);
+        args.put(KEY_NOTEID, noteId);
+        //
         args.put(KEY_CALENDARMS, a.time.getTimeInMillis());
         args.put(KEY_WORDCNT      , a.wordCnt);
         args.put(KEY_TEXT         , a.text);
@@ -247,10 +262,10 @@ public class DbAdapter {
             @Override
             public void done(AVException e) {
                 if(e == null){
-                    String id = args.getObjectId();
+                    String noteObjectId = args.getObjectId();
                     if (a.analyzed) {
                         for (NoteActivity.sentenceEmotion s : a.sentences) {
-                            insertSentenceOnServer(id, s);
+                            insertSentenceOnServer(noteId, noteObjectId, s);
                         }
                     }
                 }
@@ -277,9 +292,10 @@ public class DbAdapter {
         return sentenceId;
     }
 
-    private void insertSentenceOnServer(String noteId, NoteActivity.sentenceEmotion a) {
+    private void insertSentenceOnServer(long noteId, String noteObjectId, NoteActivity.sentenceEmotion a) {
         AVObject args = new AVObject(TABLE_SENTENCES);
         args.put(KEY_NOTEID, noteId);
+        args.put(KEY_NOTEOBJECTID, noteObjectId);
         args.put(KEY_SENTENCEID, a.sentenceId);
         args.put(KEY_TOPEMOIDX, a.topEmotionIdx);
         args.put(KEY_TOPSCORE, a.topScore);
@@ -297,14 +313,42 @@ public class DbAdapter {
         });
     }
 
-
     private long deleteSentencesByNoteId(long noteId) {
         return mDb.delete(TABLE_SENTENCES, KEY_NOTEID + "=" + noteId, null);
     }
 
     public int deleteNote(long _id) {
         mDb.delete(TABLE_SENTENCES, KEY_NOTEID + "=" + _id, null); //delete all sentences first
-        return mDb.delete(TABLE_NOTES, KEY_ROWID + "=" + _id, null);
+        int ret = mDb.delete(TABLE_NOTES, KEY_ROWID + "=" + _id, null);
+
+        if(isConnected()){
+            deleteNoteOnServer(_id);
+        }
+        return ret;
+    }
+
+    private void deleteNoteOnServer(long noteId){
+        //yk: there's currently no way to delete a note without knowing its noteObjectId. same limitation caused we can't do updateNoteOnServer.
+//        //delete all sentences first
+//        String query = "DELETE FROM " + TABLE_SENTENCES + " WHERE " + KEY_NOTEID + " = " + noteId;
+//        AVQuery.doCloudQueryInBackground(query, new CloudQueryCallback<AVCloudQueryResult>() {
+//            @Override
+//            public void done(AVCloudQueryResult avCloudQueryResult, AVException e) {
+//                if (e != null) {
+//                    Log.e(TAG, "error: deleteSentencesByNoteIdOnServer", e);
+//                }
+//            }
+//        });
+//        //delete the note
+//        query = "DELETE FROM " + TABLE_NOTES + " WHERE " + KEY_NOTEID + " = " + noteId;
+//        AVQuery.doCloudQueryInBackground(query, new CloudQueryCallback<AVCloudQueryResult>() {
+//            @Override
+//            public void done(AVCloudQueryResult avCloudQueryResult, AVException e) {
+//                if (e != null) {
+//                    Log.e(TAG, "error: deleteNoteOnServer", e);
+//                }
+//            }
+//        });
     }
 
     public boolean updateNote(long _id, NoteActivity.NoteData a) {
@@ -330,6 +374,10 @@ public class DbAdapter {
                 insertSentence(_id, s);
             }
         }
+        //                if(isConnected()) {
+//                 //yk todo   mDbHelper.updateNoteOnServer(mRowId, mNoteData);
+//                }
+
         return mDb.update(TABLE_NOTES, args, KEY_ROWID + "=" + _id, null) > 0;
     }
 

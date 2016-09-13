@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+    <!--
     <item android:id="@+id/action_report"
     android:title="@string/reports"
     android:orderInCategory="100"
@@ -27,10 +28,6 @@
         android:orderInCategory="360"
         android:icon="@drawable/twitter"
         app:showAsAction="ifRoom" />
-    <item
-        android:id="@+id/action_settings"
-        android:orderInCategory="500"
-        android:title="@string/action_settings"
-        app:showAsAction="never" />
+-->
 
 </menu>
